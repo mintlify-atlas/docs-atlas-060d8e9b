@@ -7,7 +7,7 @@ description: 'Endpoints for managing Unraid server connections'
 
 <RequestExample>
 ```bash cURL
-curl -X POST http://localhost:3000/api/servers/test \
+curl -X POST http://localhost:2442/api/servers/test \
   -H "Content-Type: application/json" \
   -d '{
     "baseUrl": "https://192.168.1.100",
@@ -45,7 +45,7 @@ Tests connectivity to an Unraid server before adding it.
 
 <RequestExample>
 ```bash cURL
-curl -X POST http://localhost:3000/api/servers \
+curl -X POST http://localhost:2442/api/servers \
   -H "Content-Type: application/json" \
   -H "X-CSRF-Token: your-csrf-token" \
   -H "Cookie: unpwa_csrf=your-csrf-token" \
@@ -113,7 +113,7 @@ Creates a new server connection and stores its credentials securely.
 
 <RequestExample>
 ```bash cURL
-curl http://localhost:3000/api/servers
+curl http://localhost:2442/api/servers
 ```
 </RequestExample>
 
@@ -159,7 +159,7 @@ Retrieves all configured server connections (without API keys).
 
 <RequestExample>
 ```bash cURL
-curl -X PUT http://localhost:3000/api/servers/{serverId} \
+curl -X PUT http://localhost:2442/api/servers/{serverId} \
   -H "Content-Type: application/json" \
   -H "X-CSRF-Token: your-csrf-token" \
   -H "Cookie: unpwa_csrf=your-csrf-token" \
@@ -217,7 +217,7 @@ At least one field (name, trustSelfSigned, accentColor, or apiKey) must be provi
 
 <RequestExample>
 ```bash cURL
-curl -X POST http://localhost:3000/api/servers/{serverId}/test-key \
+curl -X POST http://localhost:2442/api/servers/{serverId}/test-key \
   -H "Content-Type: application/json" \
   -H "X-CSRF-Token: your-csrf-token" \
   -H "Cookie: unpwa_csrf=your-csrf-token" \
@@ -257,7 +257,7 @@ Tests a new API key against an existing server configuration.
 
 <RequestExample>
 ```bash cURL
-curl -X POST http://localhost:3000/api/servers/{serverId}/activate \
+curl -X POST http://localhost:2442/api/servers/{serverId}/activate \
   -H "X-CSRF-Token: your-csrf-token" \
   -H "Cookie: unpwa_csrf=your-csrf-token"
 ```
@@ -289,7 +289,7 @@ Sets the specified server as the active server.
 
 <RequestExample>
 ```bash cURL
-curl -X DELETE http://localhost:3000/api/servers/{serverId} \
+curl -X DELETE http://localhost:2442/api/servers/{serverId} \
   -H "X-CSRF-Token: your-csrf-token" \
   -H "Cookie: unpwa_csrf=your-csrf-token"
 ```
@@ -321,7 +321,7 @@ Removes a server configuration and its stored credentials.
 
 <RequestExample>
 ```bash cURL
-curl http://localhost:3000/api/servers/status
+curl http://localhost:2442/api/servers/status
 ```
 </RequestExample>
 

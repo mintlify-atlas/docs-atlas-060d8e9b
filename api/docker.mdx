@@ -7,7 +7,7 @@ description: 'Endpoints for managing Docker containers'
 
 <RequestExample>
 ```bash cURL
-curl http://localhost:3000/api/docker
+curl http://localhost:2442/api/docker
 ```
 </RequestExample>
 
@@ -75,7 +75,7 @@ Retrieves information about all Docker containers on the Unraid server.
 
 <RequestExample>
 ```bash cURL
-curl http://localhost:3000/api/docker/{containerId}/icon
+curl http://localhost:2442/api/docker/{containerId}/icon
 ```
 </RequestExample>
 
@@ -100,7 +100,7 @@ Retrieves the icon image for a specific Docker container.
 
 <RequestExample>
 ```bash cURL
-curl -X POST http://localhost:3000/api/docker/{containerId}/start \
+curl -X POST http://localhost:2442/api/docker/{containerId}/start \
   -H "X-CSRF-Token: your-csrf-token" \
   -H "Cookie: unpwa_csrf=your-csrf-token"
 ```
@@ -134,7 +134,7 @@ Starts a Docker container.
 
 <RequestExample>
 ```bash cURL
-curl -X POST http://localhost:3000/api/docker/{containerId}/stop \
+curl -X POST http://localhost:2442/api/docker/{containerId}/stop \
   -H "X-CSRF-Token: your-csrf-token" \
   -H "Cookie: unpwa_csrf=your-csrf-token"
 ```
@@ -168,7 +168,7 @@ Stops a Docker container.
 
 <RequestExample>
 ```bash cURL
-curl -X POST http://localhost:3000/api/docker/{containerId}/restart \
+curl -X POST http://localhost:2442/api/docker/{containerId}/restart \
   -H "X-CSRF-Token: your-csrf-token" \
   -H "Cookie: unpwa_csrf=your-csrf-token"
 ```

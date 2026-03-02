@@ -7,7 +7,7 @@ description: 'Endpoints for managing application settings'
 
 <RequestExample>
 ```bash cURL
-curl http://localhost:3000/api/settings/app
+curl http://localhost:2442/api/settings/app
 ```
 </RequestExample>
 
@@ -30,7 +30,7 @@ Retrieves the current application settings.
 
 <RequestExample>
 ```bash cURL
-curl -X PUT http://localhost:3000/api/settings/app \
+curl -X PUT http://localhost:2442/api/settings/app \
   -H "Content-Type: application/json" \
   -H "X-CSRF-Token: your-csrf-token" \
   -H "Cookie: unpwa_csrf=your-csrf-token" \

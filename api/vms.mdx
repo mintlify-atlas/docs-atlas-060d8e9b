@@ -7,7 +7,7 @@ description: 'Endpoints for managing virtual machines'
 
 <RequestExample>
 ```bash cURL
-curl http://localhost:3000/api/vms
+curl http://localhost:2442/api/vms
 ```
 </RequestExample>
 
@@ -60,7 +60,7 @@ Retrieves information about all virtual machines on the Unraid server.
 
 <RequestExample>
 ```bash cURL
-curl -X POST http://localhost:3000/api/vms/{vmId}/start \
+curl -X POST http://localhost:2442/api/vms/{vmId}/start \
   -H "X-CSRF-Token: your-csrf-token" \
   -H "Cookie: unpwa_csrf=your-csrf-token"
 ```
@@ -94,7 +94,7 @@ Starts a virtual machine.
 
 <RequestExample>
 ```bash cURL
-curl -X POST http://localhost:3000/api/vms/{vmId}/stop \
+curl -X POST http://localhost:2442/api/vms/{vmId}/stop \
   -H "X-CSRF-Token: your-csrf-token" \
   -H "Cookie: unpwa_csrf=your-csrf-token"
 ```
@@ -128,7 +128,7 @@ Stops a virtual machine gracefully.
 
 <RequestExample>
 ```bash cURL
-curl -X POST http://localhost:3000/api/vms/{vmId}/forceStop \
+curl -X POST http://localhost:2442/api/vms/{vmId}/forceStop \
   -H "X-CSRF-Token: your-csrf-token" \
   -H "Cookie: unpwa_csrf=your-csrf-token"
 ```
@@ -162,7 +162,7 @@ Force stops a virtual machine immediately (equivalent to pulling the power plug)
 
 <RequestExample>
 ```bash cURL
-curl -X POST http://localhost:3000/api/vms/{vmId}/pause \
+curl -X POST http://localhost:2442/api/vms/{vmId}/pause \
   -H "X-CSRF-Token: your-csrf-token" \
   -H "Cookie: unpwa_csrf=your-csrf-token"
 ```
@@ -196,7 +196,7 @@ Pauses a running virtual machine.
 
 <RequestExample>
 ```bash cURL
-curl -X POST http://localhost:3000/api/vms/{vmId}/resume \
+curl -X POST http://localhost:2442/api/vms/{vmId}/resume \
   -H "X-CSRF-Token: your-csrf-token" \
   -H "Cookie: unpwa_csrf=your-csrf-token"
 ```
@@ -230,7 +230,7 @@ Resumes a paused virtual machine.
 
 <RequestExample>
 ```bash cURL
-curl -X POST http://localhost:3000/api/vms/{vmId}/reboot \
+curl -X POST http://localhost:2442/api/vms/{vmId}/reboot \
   -H "X-CSRF-Token: your-csrf-token" \
   -H "Cookie: unpwa_csrf=your-csrf-token"
 ```
@@ -264,7 +264,7 @@ Reboots a virtual machine gracefully.
 
 <RequestExample>
 ```bash cURL
-curl -X POST http://localhost:3000/api/vms/{vmId}/reset \
+curl -X POST http://localhost:2442/api/vms/{vmId}/reset \
   -H "X-CSRF-Token: your-csrf-token" \
   -H "Cookie: unpwa_csrf=your-csrf-token"
 ```

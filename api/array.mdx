@@ -7,7 +7,7 @@ description: 'Endpoints for retrieving array data and controlling array state'
 
 <RequestExample>
 ```bash cURL
-curl http://localhost:3000/api/array
+curl http://localhost:2442/api/array
 ```
 </RequestExample>
 
@@ -106,7 +106,7 @@ Retrieves detailed information about the Unraid array including capacity, parity
 
 <RequestExample>
 ```bash cURL
-curl -X POST http://localhost:3000/api/array/start \
+curl -X POST http://localhost:2442/api/array/start \
   -H "X-CSRF-Token: your-csrf-token" \
   -H "Cookie: unpwa_csrf=your-csrf-token"
 ```
@@ -136,7 +136,7 @@ Starts the Unraid array.
 
 <RequestExample>
 ```bash cURL
-curl -X POST http://localhost:3000/api/array/stop \
+curl -X POST http://localhost:2442/api/array/stop \
   -H "X-CSRF-Token: your-csrf-token" \
   -H "Cookie: unpwa_csrf=your-csrf-token"
 ```
