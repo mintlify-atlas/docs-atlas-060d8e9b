@@ -1,0 +1,100 @@
+---
+title: 'App Settings'
+description: 'Endpoints for managing application settings'
+---
+
+## Get App Settings
+
+<RequestExample>
+```bash cURL
+curl http://localhost:3000/api/settings/app
+```
+</RequestExample>
+
+Retrieves the current application settings.
+
+<ResponseField name="themeMode" type="string">
+  Current theme mode: "dark" or "light".
+</ResponseField>
+
+<ResponseField name="accentColor" type="string">
+  Current accent color (hex format like #3b82f6 or legacy color name).
+</ResponseField>
+
+**Error Responses:**
+- `500` - Unable to load app settings
+
+---
+
+## Update App Settings
+
+<RequestExample>
+```bash cURL
+curl -X PUT http://localhost:3000/api/settings/app \
+  -H "Content-Type: application/json" \
+  -H "X-CSRF-Token: your-csrf-token" \
+  -H "Cookie: unpwa_csrf=your-csrf-token" \
+  -d '{
+    "themeMode": "dark",
+    "accentColor": "#3b82f6"
+  }'
+```
+</RequestExample>
+
+Updates application settings.
+
+**Authentication:** Requires CSRF token
+
+**Rate Limit:** 20 requests per minute per IP
+
+<ParamField body="themeMode" type="string">
+  Theme mode to set: "dark" or "light".
+</ParamField>
+
+<ParamField body="accentColor" type="string">
+  Accent color to set. Must be a valid hex color (e.g., #3b82f6, #10b981) or legacy color name (amber, orange, purple, blue, green). Maximum length: 32 characters.
+</ParamField>
+
+<Note>
+At least one field (themeMode or accentColor) must be provided.
+</Note>
+
+<ResponseField name="themeMode" type="string">
+  Updated theme mode.
+</ResponseField>
+
+<ResponseField name="accentColor" type="string">
+  Updated accent color.
+</ResponseField>
+
+**Error Responses:**
+- `400` - Invalid request body or validation errors
+- `403` - CSRF validation failed
+- `429` - Rate limit exceeded
+- `500` - Unable to save app settings
+
+## Theme and Color Options
+
+### Theme Modes
+
+The application supports two theme modes:
+- **dark** - Dark theme optimized for low-light environments
+- **light** - Light theme for bright environments
+
+### Accent Colors
+
+Accent colors can be specified in two formats:
+
+1. **Hex colors** - Any valid 3 or 6 digit hex color:
+   - `#3b82f6` (blue)
+   - `#10b981` (green)
+   - `#f59e0b` (amber)
+   - `#ef4444` (red)
+   - `#8b5cf6` (purple)
+
+2. **Legacy color names** (for backward compatibility):
+   - `amber`
+   - `orange`
+   - `purple`
+   - `blue`
+   - `green`

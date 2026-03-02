@@ -1,0 +1,163 @@
+---
+title: Docker Compose Deployment
+description: Deploy Unraid PWA using Docker Compose
+---
+
+The recommended way to deploy Unraid PWA is using Docker Compose with the pre-built image from GitHub Container Registry.
+
+## Prerequisites
+
+- Docker and Docker Compose installed on your Unraid server
+- Access to the Unraid terminal
+- Unraid server with API access enabled
+
+## Installation
+
+### Using Pre-built Image (Recommended)
+
+Pre-built Docker images are automatically published to GitHub Container Registry.
+
+<Steps>
+  <Step title="Clone the repository">
+    Run these commands on your Unraid server terminal:
+
+    ```bash
+    cd /mnt/user/appdata
+    git clone https://github.com/laurensguijt/Unraid-PWA.git
+    cd Unraid-PWA
+    ```
+  </Step>
+
+  <Step title="Configure environment (optional)">
+    Customize environment values if needed:
+
+    ```bash
+    cp .env.example .env
+    nano .env
+    ```
+
+    See [Environment Variables](/deployment/environment-variables) for available options.
+  </Step>
+
+  <Step title="Start the service">
+    Start using the pre-built image:
+
+    ```bash
+    docker compose up -d
+    ```
+  </Step>
+
+  <Step title="Check status">
+    Verify the container is running:
+
+    ```bash
+    docker compose ps
+    ```
+  </Step>
+</Steps>
+
+## Docker Compose Configuration
+
+The `docker-compose.yml` file includes the following configuration:
+
+```yaml
+services:
+  app:
+    image: ghcr.io/laurensguijt/unraid-pwa:latest
+    container_name: unraid-pwa
+    environment:
+      UNRAID_BFF_PORT: ${UNRAID_BFF_PORT:-3001}
+      UNRAID_BFF_ORIGIN: ${UNRAID_BFF_ORIGIN:-http://localhost:5173,http://localhost:2442}
+      UNRAID_BFF_ALLOW_SELF_SIGNED: ${UNRAID_BFF_ALLOW_SELF_SIGNED:-true}
+      UNRAID_BFF_TRUST_PROXY: ${UNRAID_BFF_TRUST_PROXY:-false}
+      UNRAID_BFF_ENCRYPTION_KEY: ${UNRAID_BFF_ENCRYPTION_KEY:-}
+    ports:
+      - "2442:3001"
+    volumes:
+      - ./backend/data:/app/data
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3001/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+```
+
+### Port Mapping
+
+- Host port `2442` maps to container port `3001`
+- Access the app at `http://<UNRAID-IP>:2442`
+
+### Volume Mounts
+
+- `./backend/data:/app/data` - Persistent data storage for server credentials and audit logs
+
+See [Data Persistence](/deployment/data-persistence) for more information.
+
+### Health Check
+
+The service includes an integrated health check that:
+- Checks the `/health` endpoint every 15 seconds
+- Times out after 5 seconds
+- Retries up to 5 times before marking as unhealthy
+- Waits 10 seconds after startup before first check
+
+You can check the health status:
+
+```bash
+docker inspect --format='{{.State.Health.Status}}' unraid-pwa
+```
+
+## Managing the Service
+
+### Stop the Service
+
+```bash
+cd /mnt/user/appdata/Unraid-PWA
+docker compose down
+```
+
+### Start the Service
+
+```bash
+cd /mnt/user/appdata/Unraid-PWA
+docker compose up -d
+```
+
+### View Logs
+
+```bash
+cd /mnt/user/appdata/Unraid-PWA
+docker compose logs -f
+```
+
+### Restart the Service
+
+```bash
+cd /mnt/user/appdata/Unraid-PWA
+docker compose restart
+```
+
+## First Run Configuration
+
+After deployment, open `http://<UNRAID-IP>:2442` in your browser and:
+
+<Steps>
+  <Step title="Add Unraid server URL">
+    Enter your Unraid server URL: `https://<unraid-ip>:3443`
+  </Step>
+
+  <Step title="Add API key">
+    Enter your Unraid API key
+  </Step>
+
+  <Step title="Save setup">
+    Save the configuration to complete setup
+  </Step>
+</Steps>
+
+## Next Steps
+
+- [Configure environment variables](/deployment/environment-variables)
+- [Set up data persistence](/deployment/data-persistence)
+- [Learn how to update](/deployment/updating)

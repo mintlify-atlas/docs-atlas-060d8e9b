@@ -1,0 +1,229 @@
+---
+title: Building from Source
+description: Build and deploy Unraid PWA from source code
+---
+
+If you prefer to build the Docker image locally instead of using the pre-built image, follow this guide.
+
+## Prerequisites
+
+- Docker and Docker Compose installed
+- Git installed
+- Access to the Unraid terminal
+- At least 2GB of free disk space for the build
+
+## Building with Docker Compose
+
+<Steps>
+  <Step title="Clone the repository">
+    ```bash
+    cd /mnt/user/appdata
+    git clone https://github.com/laurensguijt/Unraid-PWA.git
+    cd Unraid-PWA
+    ```
+  </Step>
+
+  <Step title="Configure environment (optional)">
+    Customize environment values if needed:
+
+    ```bash
+    cp .env.example .env
+    nano .env
+    ```
+  </Step>
+
+  <Step title="Enable local build in docker-compose.yml">
+    Edit `docker-compose.yml` and uncomment the build section:
+
+    ```yaml
+    services:
+      app:
+        # image: ghcr.io/laurensguijt/unraid-pwa:latest
+        build:
+          context: .
+          dockerfile: Dockerfile
+    ```
+  </Step>
+
+  <Step title="Build and start">
+    Build the image and start the service:
+
+    ```bash
+    docker compose up -d --build
+    ```
+  </Step>
+
+  <Step title="Check status">
+    Verify the container is running:
+
+    ```bash
+    docker compose ps
+    ```
+  </Step>
+</Steps>
+
+## Docker Build Process
+
+The Dockerfile uses a multi-stage build process for optimal image size:
+
+### Stage 1: Frontend Build
+
+```dockerfile
+FROM node:22-alpine AS frontend-build
+WORKDIR /frontend
+
+COPY frontend/package.json frontend/package-lock.json* ./
+RUN npm ci
+
+COPY frontend/tsconfig.json ./tsconfig.json
+COPY frontend/vite.config.ts ./vite.config.ts
+COPY frontend/index.html ./index.html
+COPY frontend/public ./public
+COPY frontend/src ./src
+COPY scripts /scripts
+RUN npm run build
+```
+
+- Uses Node.js 22 Alpine for minimal image size
+- Installs frontend dependencies with `npm ci`
+- Builds the frontend with Vite
+
+### Stage 2: Backend Build
+
+```dockerfile
+FROM node:22-alpine AS backend-build
+WORKDIR /backend
+
+COPY backend/package.json backend/package-lock.json* ./
+RUN npm ci
+
+COPY backend/tsconfig.json ./tsconfig.json
+COPY backend/src ./src
+RUN npm run build
+```
+
+- Builds TypeScript backend to JavaScript
+- Uses separate stage for clean separation
+
+### Stage 3: Runtime
+
+```dockerfile
+FROM node:22-alpine AS runtime
+WORKDIR /app
+ENV NODE_ENV=production
+
+COPY backend/package.json backend/package-lock.json* ./
+RUN npm ci --omit=dev
+
+COPY --from=backend-build /backend/dist ./dist
+COPY --from=frontend-build /frontend/dist ./public
+
+RUN mkdir -p /app/data
+
+EXPOSE 3001
+CMD ["node", "dist/index.js"]
+```
+
+- Uses production dependencies only (`--omit=dev`)
+- Copies built artifacts from previous stages
+- Creates `/app/data` directory for persistent storage
+- Exposes port 3001
+- Runs the compiled backend server
+
+## Local Development Build
+
+For local development without Docker:
+
+<Steps>
+  <Step title="Clone the repository">
+    ```bash
+    git clone https://github.com/laurensguijt/Unraid-PWA.git
+    cd Unraid-PWA
+    ```
+  </Step>
+
+  <Step title="Install dependencies">
+    ```bash
+    npm --prefix backend install
+    npm --prefix frontend install
+    ```
+  </Step>
+
+  <Step title="Run development servers">
+    In separate terminals:
+
+    ```bash
+    npm run dev:backend
+    ```
+
+    ```bash
+    npm run dev:frontend
+    ```
+  </Step>
+
+  <Step title="Access the application">
+    Frontend dev URL: `http://localhost:5173`
+  </Step>
+</Steps>
+
+## Quality Checks
+
+Run quality checks before deploying:
+
+```bash
+# Linting
+npm run lint
+
+# Unit tests
+npm run test
+
+# End-to-end tests
+npm run test:e2e
+```
+
+## Build Optimization
+
+### Build Cache
+
+Docker will cache layers to speed up subsequent builds. To force a clean build:
+
+```bash
+docker compose build --no-cache
+```
+
+### Build Arguments
+
+The build uses Alpine Linux and multi-stage builds to minimize final image size:
+
+- Frontend build artifacts: ~2MB (after Vite optimization)
+- Backend compiled code: ~500KB
+- Node.js runtime: ~50MB
+- Production dependencies: varies based on package.json
+
+## Troubleshooting
+
+### Build Fails with Memory Error
+
+Increase Docker memory allocation in Unraid Docker settings.
+
+### Build Fails with Network Timeout
+
+Check your internet connection and retry:
+
+```bash
+docker compose build --no-cache
+```
+
+### Build Succeeds but Container Won't Start
+
+Check logs:
+
+```bash
+docker compose logs
+```
+
+## Next Steps
+
+- [Configure environment variables](/deployment/environment-variables)
+- [Set up data persistence](/deployment/data-persistence)
+- [Learn how to update](/deployment/updating)

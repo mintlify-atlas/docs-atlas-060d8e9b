@@ -1,0 +1,493 @@
+---
+title: Configuration
+description: Customize Unraid PWA with environment variables and advanced settings
+---
+
+# Configuration
+
+Unraid PWA is designed to work out of the box with sensible defaults, but you can customize its behavior using environment variables in the `.env` file.
+
+## Environment Variables
+
+All configuration is done through environment variables. Create a `.env` file in the root directory of your installation:
+
+```bash
+cp .env.example .env
+nano .env
+```
+
+### Available Variables
+
+<CodeGroup>
+```bash .env.example
+UNRAID_BFF_PORT=3001
+UNRAID_BFF_ORIGIN=http://localhost:5173,http://localhost:2442
+UNRAID_BFF_ENCRYPTION_KEY=
+UNRAID_BFF_ALLOW_SELF_SIGNED=true
+UNRAID_BFF_TRUST_PROXY=false
+```
+
+```yaml docker-compose.yml
+services:
+  app:
+    environment:
+      UNRAID_BFF_PORT: ${UNRAID_BFF_PORT:-3001}
+      UNRAID_BFF_ORIGIN: ${UNRAID_BFF_ORIGIN:-http://localhost:5173,http://localhost:2442}
+      UNRAID_BFF_ALLOW_SELF_SIGNED: ${UNRAID_BFF_ALLOW_SELF_SIGNED:-true}
+      UNRAID_BFF_TRUST_PROXY: ${UNRAID_BFF_TRUST_PROXY:-false}
+      UNRAID_BFF_ENCRYPTION_KEY: ${UNRAID_BFF_ENCRYPTION_KEY:-}
+```
+</CodeGroup>
+
+## Configuration Reference
+
+### UNRAID_BFF_PORT
+
+**Type**: `number`  
+**Default**: `3001`  
+**Example**: `UNRAID_BFF_PORT=3001`
+
+The internal port the backend service listens on inside the Docker container.
+
+<Note>
+  This is the **internal** container port. The `docker-compose.yml` maps this to port `2442` on the host by default (`2442:3001`). You access the app at port 2442, not 3001.
+</Note>
+
+**When to change:**
+- You're running multiple instances of Unraid PWA
+- Port 3001 conflicts with another service inside the container
+
+```typescript backend/src/index.ts
+const port = Number(process.env.UNRAID_BFF_PORT ?? 3001);
+
+app.listen(port, () => {
+  console.log(`Unraid PWA BFF listening on port ${port}`);
+});
+```
+
+### UNRAID_BFF_ORIGIN
+
+**Type**: `string` (comma-separated list)  
+**Default**: `http://localhost:5173,http://localhost:2442`  
+**Example**: `UNRAID_BFF_ORIGIN=https://unraid.example.com,http://192.168.1.100:2442`
+
+Allowed origins for Cross-Origin Resource Sharing (CORS) when accessing the `/api` endpoints.
+
+<Info>
+  **Same-origin requests** (accessing the app at `http://<UNRAID-IP>:2442`) don't require CORS configuration. This setting only affects cross-origin API requests.
+</Info>
+
+**When to configure:**
+- You're accessing the API from a different domain or port
+- You're using a reverse proxy with a different URL
+- You're building a custom frontend or mobile app
+
+**Example configurations:**
+
+```bash
+# Allow any origin (development only)
+UNRAID_BFF_ORIGIN=*
+
+# Allow multiple specific origins
+UNRAID_BFF_ORIGIN=https://unraid.example.com,https://app.example.com
+
+# Local development with custom port
+UNRAID_BFF_ORIGIN=http://localhost:5173,http://localhost:3000
+```
+
+<Warning>
+  **Security**: Never use `UNRAID_BFF_ORIGIN=*` in production. Always specify exact origins to prevent unauthorized cross-origin access.
+</Warning>
+
+The CORS implementation:
+
+```typescript backend/src/index.ts
+const allowedOrigins = (process.env.UNRAID_BFF_ORIGIN ?? "*")
+  .split(",")
+  .map((item) => item.trim())
+  .filter(Boolean);
+
+const normalizedAllowedOrigins = new Set(allowedOrigins.map((origin) => origin.toLowerCase()));
+const allowAnyOrigin = normalizedAllowedOrigins.has("*");
+
+app.use(
+  "/api",
+  cors<Request>((req, callback) => {
+    const origin = req.header("origin");
+    if (!origin) {
+      callback(null, { origin: false });
+      return;
+    }
+
+    const normalizedOrigin = origin.toLowerCase();
+    if (
+      allowAnyOrigin ||
+      normalizedAllowedOrigins.has(normalizedOrigin) ||
+      isSameOrigin(origin, req)
+    ) {
+      callback(null, { origin: true, credentials: true });
+      return;
+    }
+
+    callback(new Error("Origin not allowed by CORS"));
+  }),
+);
+```
+
+### UNRAID_BFF_ENCRYPTION_KEY
+
+**Type**: `string` (base64-encoded)  
+**Default**: Auto-generated and stored in `backend/data/encryption.key`  
+**Example**: `UNRAID_BFF_ENCRYPTION_KEY=your-base64-encoded-key-here`
+
+Encryption key used to encrypt server credentials in `backend/data/servers.enc`.
+
+<Info>
+  **Recommended**: Leave this empty to let the app auto-generate and persist a secure encryption key. Only set this manually if you need to control the key (e.g., for backup/restore across multiple instances).
+</Info>
+
+**How it works:**
+
+1. If `UNRAID_BFF_ENCRYPTION_KEY` is set, that key is used
+2. If empty, the app looks for `backend/data/encryption.key`
+3. If the file doesn't exist, a new random key is generated and saved
+
+**Manual key generation:**
+
+If you need to generate your own encryption key:
+
+```bash
+# Generate a 32-byte random key and encode as base64
+node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+```
+
+Then set it in `.env`:
+
+```bash
+UNRAID_BFF_ENCRYPTION_KEY=generated-base64-key-here
+```
+
+<Warning>
+  **Critical**: If you lose the encryption key, you'll lose access to all stored server credentials. Always back up `backend/data/encryption.key` or your custom key from `.env`.
+</Warning>
+
+### UNRAID_BFF_ALLOW_SELF_SIGNED
+
+**Type**: `boolean`  
+**Default**: `true`  
+**Example**: `UNRAID_BFF_ALLOW_SELF_SIGNED=true`
+
+Allow connections to Unraid servers using self-signed SSL certificates.
+
+**When to disable:**
+- Your Unraid server uses a valid certificate from a trusted CA
+- You want to enforce strict SSL validation
+
+```bash
+# Require valid SSL certificates
+UNRAID_BFF_ALLOW_SELF_SIGNED=false
+```
+
+<Tip>
+  Most Unraid servers use self-signed certificates by default, so `true` is the recommended setting for home labs.
+</Tip>
+
+### UNRAID_BFF_TRUST_PROXY
+
+**Type**: `boolean | string`  
+**Default**: `false`  
+**Example**: `UNRAID_BFF_TRUST_PROXY=true`
+
+Configure Express.js proxy trust settings. This affects how the app determines the client's real IP address and protocol when behind a reverse proxy.
+
+**Possible values:**
+
+- `false`: Don't trust any proxy (default)
+- `true`: Trust the first proxy
+- `loopback`: Trust loopback addresses (127.0.0.1, ::1)
+- `linklocal`: Trust link-local addresses
+- `uniquelocal`: Trust unique local addresses
+
+**When to enable:**
+- You're running Unraid PWA behind a reverse proxy (nginx, Caddy, Traefik)
+- You need accurate client IP logging
+- You're using HTTPS termination at the proxy level
+
+```bash
+# Trust first proxy (nginx, Caddy)
+UNRAID_BFF_TRUST_PROXY=true
+
+# Trust only loopback proxies
+UNRAID_BFF_TRUST_PROXY=loopback
+```
+
+Implementation in the backend:
+
+```typescript backend/src/index.ts
+const trustProxyRaw = (process.env.UNRAID_BFF_TRUST_PROXY ?? "false").trim().toLowerCase();
+if (trustProxyRaw === "true") {
+  app.set("trust proxy", 1);
+} else if (["loopback", "linklocal", "uniquelocal"].includes(trustProxyRaw)) {
+  app.set("trust proxy", trustProxyRaw);
+}
+```
+
+<Info>
+  When `trust proxy` is enabled, Express.js uses the `X-Forwarded-*` headers to determine the client's real IP and protocol.
+</Info>
+
+## Advanced Configuration Scenarios
+
+### Reverse Proxy Setup (nginx)
+
+If you're running Unraid PWA behind nginx with HTTPS:
+
+**nginx configuration:**
+
+```nginx
+server {
+    listen 443 ssl;
+    server_name unraid-pwa.example.com;
+
+    ssl_certificate /path/to/cert.pem;
+    ssl_certificate_key /path/to/key.pem;
+
+    location / {
+        proxy_pass http://localhost:2442;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host;
+    }
+}
+```
+
+**Unraid PWA `.env`:**
+
+```bash
+UNRAID_BFF_PORT=3001
+UNRAID_BFF_ORIGIN=https://unraid-pwa.example.com
+UNRAID_BFF_TRUST_PROXY=true
+UNRAID_BFF_ALLOW_SELF_SIGNED=true
+```
+
+### Multiple Instances
+
+Running multiple Unraid PWA instances on the same host:
+
+**Instance 1:**
+
+```bash .env
+UNRAID_BFF_PORT=3001
+```
+
+```yaml docker-compose.yml
+ports:
+  - "2442:3001"
+volumes:
+  - ./backend/data:/app/data
+```
+
+**Instance 2:**
+
+```bash .env
+UNRAID_BFF_PORT=3001
+```
+
+```yaml docker-compose.yml
+ports:
+  - "2443:3001"  # Different host port
+volumes:
+  - ./backend/data2:/app/data  # Different data directory
+```
+
+### Development Environment
+
+For local development with hot reload:
+
+```bash .env
+UNRAID_BFF_PORT=3001
+UNRAID_BFF_ORIGIN=http://localhost:5173
+UNRAID_BFF_ALLOW_SELF_SIGNED=true
+UNRAID_BFF_TRUST_PROXY=false
+```
+
+Run the development servers:
+
+```bash
+npm run dev:backend   # Backend on http://localhost:3001
+npm run dev:frontend  # Frontend on http://localhost:5173
+```
+
+## Applying Configuration Changes
+
+After modifying `.env`, restart the container:
+
+```bash
+cd /mnt/user/appdata/Unraid-PWA
+docker compose down
+docker compose up -d
+```
+
+Verify the changes took effect:
+
+```bash
+docker compose logs --tail=20
+```
+
+You should see the startup message with your configured port:
+
+```
+Unraid PWA BFF listening on port 3001
+```
+
+## Data Directory Structure
+
+The `backend/data` directory contains all persistent data:
+
+```
+backend/data/
+├── servers.enc        # Encrypted server credentials (AES-256-GCM)
+├── encryption.key     # Auto-generated encryption key (if not set in .env)
+└── audit.log          # Write operation audit log
+```
+
+### Backup Recommendations
+
+<Steps>
+  <Step title="Regular backups">
+    Back up the entire `backend/data` directory regularly:
+
+    ```bash
+    tar -czf unraid-pwa-backup-$(date +%Y%m%d).tar.gz backend/data
+    ```
+  </Step>
+
+  <Step title="Secure storage">
+    Store backups in a secure location, as they contain encrypted credentials.
+  </Step>
+
+  <Step title="Test restore">
+    Periodically test restoring from backup to ensure data integrity:
+
+    ```bash
+    # Stop container
+    docker compose down
+
+    # Restore data
+    rm -rf backend/data
+    tar -xzf unraid-pwa-backup-20260302.tar.gz
+
+    # Restart
+    docker compose up -d
+    ```
+  </Step>
+</Steps>
+
+## Security Considerations
+
+<CardGroup cols={2}>
+  <Card title="Encryption at Rest" icon="lock">
+    Server credentials are encrypted using AES-256-GCM. The encryption key is stored separately from the encrypted data.
+  </Card>
+  <Card title="CSRF Protection" icon="shield">
+    All write operations require a valid CSRF token, preventing cross-site request forgery attacks.
+  </Card>
+  <Card title="Rate Limiting" icon="gauge">
+    Write endpoints are rate-limited to prevent abuse and resource exhaustion.
+  </Card>
+  <Card title="Audit Logging" icon="file-lines">
+    All write operations are logged with timestamps and results for accountability.
+  </Card>
+</CardGroup>
+
+### File Permissions
+
+Ensure the data directory has appropriate permissions:
+
+```bash
+chmod 700 backend/data
+chmod 600 backend/data/servers.enc
+chmod 600 backend/data/encryption.key
+```
+
+### Environment Variable Security
+
+<Warning>
+  **Never commit `.env` to version control**. Add it to `.gitignore` to prevent accidentally exposing sensitive configuration.
+</Warning>
+
+The repository includes `.env.example` for reference:
+
+```bash
+# Copy and customize for your environment
+cp .env.example .env
+
+# .env is already in .gitignore
+```
+
+## Troubleshooting Configuration
+
+### CORS errors in browser console
+
+**Symptom:**
+```
+Access to XMLHttpRequest at 'http://localhost:2442/api/overview' from origin 'http://localhost:3000' has been blocked by CORS policy
+```
+
+**Solution:**
+
+Add your origin to `UNRAID_BFF_ORIGIN`:
+
+```bash
+UNRAID_BFF_ORIGIN=http://localhost:3000,http://localhost:2442
+```
+
+### Encryption key mismatch
+
+**Symptom:**
+```
+Error: Unable to decrypt server credentials
+```
+
+**Cause:** The encryption key changed or was lost.
+
+**Solution:**
+
+1. Restore `backend/data/encryption.key` from backup, or
+2. Remove `backend/data/servers.enc` and re-add your servers
+
+### Port already in use
+
+**Symptom:**
+```
+Error: bind EADDRINUSE :::2442
+```
+
+**Solution:**
+
+Change the host port mapping in `docker-compose.yml`:
+
+```yaml
+ports:
+  - "2443:3001"  # Use a different host port
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="API Reference"
+    icon="code"
+    href="/api/overview"
+  >
+    Explore the REST API endpoints for custom integrations
+  </Card>
+  <Card
+    title="Updating"
+    icon="arrows-rotate"
+    href="/deployment/updating"
+  >
+    Learn how to update Unraid PWA to the latest version
+  </Card>
+</CardGroup>

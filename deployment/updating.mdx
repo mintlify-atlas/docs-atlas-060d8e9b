@@ -1,0 +1,340 @@
+---
+title: Updating
+description: Keep Unraid PWA up to date with the latest features and fixes
+---
+
+This guide covers how to update Unraid PWA to the latest version.
+
+## Update Methods
+
+There are two update methods depending on how you deployed:
+
+1. **Pre-built image** (recommended) - Pull latest image from GitHub Container Registry
+2. **Build from source** - Pull latest code and rebuild locally
+
+## Updating Pre-built Image
+
+If you deployed using the pre-built image from GitHub Container Registry:
+
+<Steps>
+  <Step title="Navigate to installation directory">
+    ```bash
+    cd /mnt/user/appdata/Unraid-PWA
+    ```
+  </Step>
+
+  <Step title="Pull latest changes">
+    Update the repository to get the latest `docker-compose.yml`:
+
+    ```bash
+    git pull
+    ```
+  </Step>
+
+  <Step title="Pull latest image and restart">
+    ```bash
+    docker compose pull
+    docker compose up -d
+    ```
+  </Step>
+
+  <Step title="Verify update">
+    Check that the container is running:
+
+    ```bash
+    docker compose ps
+    ```
+  </Step>
+</Steps>
+
+<Note>
+  The `docker compose up -d` command automatically recreates containers if the image has changed.
+</Note>
+
+## Updating from Source Build
+
+If you built from source:
+
+<Steps>
+  <Step title="Navigate to installation directory">
+    ```bash
+    cd /mnt/user/appdata/Unraid-PWA
+    ```
+  </Step>
+
+  <Step title="Pull latest changes">
+    ```bash
+    git pull
+    ```
+  </Step>
+
+  <Step title="Rebuild and restart">
+    ```bash
+    docker compose up -d --build
+    ```
+  </Step>
+
+  <Step title="Verify update">
+    Check that the container is running:
+
+    ```bash
+    docker compose ps
+    ```
+  </Step>
+</Steps>
+
+## Checking Current Version
+
+### Via Docker Image Tag
+
+Check the current image version:
+
+```bash
+docker images | grep unraid-pwa
+```
+
+### Via Git
+
+Check the current commit:
+
+```bash
+cd /mnt/user/appdata/Unraid-PWA
+git log -1 --oneline
+```
+
+### Via Health Endpoint
+
+Query the health endpoint:
+
+```bash
+curl http://localhost:2442/health
+```
+
+Response:
+```json
+{
+  "ok": true,
+  "service": "unraid-pwa-bff"
+}
+```
+
+## Update Schedule
+
+### Recommended Schedule
+
+- **Check for updates:** Weekly
+- **Apply updates:** Monthly or when critical fixes are released
+
+### Automated Updates
+
+Create an update script:
+
+```bash
+#!/bin/bash
+cd /mnt/user/appdata/Unraid-PWA
+
+# Pull latest changes
+git pull
+
+# Update and restart
+docker compose pull
+docker compose up -d
+
+# Send notification (optional)
+curl -X POST "http://localhost:3000/notify" -d "Unraid PWA updated"
+```
+
+Schedule with cron:
+
+```bash
+0 3 * * 0 /mnt/user/scripts/update-unraid-pwa.sh
+```
+
+<Warning>
+  Automated updates may introduce breaking changes. Review release notes before enabling automated updates.
+</Warning>
+
+## Breaking Changes
+
+Before updating, check for breaking changes:
+
+1. Visit the [GitHub releases page](https://github.com/laurensguijt/Unraid-PWA/releases)
+2. Review release notes for your current version to the latest
+3. Check for migration instructions
+
+## Rollback Procedure
+
+If an update causes issues, rollback to the previous version:
+
+### Rollback Pre-built Image
+
+<Steps>
+  <Step title="Find previous image version">
+    Check Docker Hub or GitHub Container Registry for version tags
+  </Step>
+
+  <Step title="Update docker-compose.yml">
+    Edit the image tag:
+
+    ```yaml
+    services:
+      app:
+        image: ghcr.io/laurensguijt/unraid-pwa:v1.2.3  # Specify version
+    ```
+  </Step>
+
+  <Step title="Restart with previous version">
+    ```bash
+    docker compose up -d
+    ```
+  </Step>
+</Steps>
+
+### Rollback Source Build
+
+<Steps>
+  <Step title="Find previous commit">
+    ```bash
+    cd /mnt/user/appdata/Unraid-PWA
+    git log --oneline
+    ```
+  </Step>
+
+  <Step title="Checkout previous commit">
+    ```bash
+    git checkout <commit-hash>
+    ```
+  </Step>
+
+  <Step title="Rebuild and restart">
+    ```bash
+    docker compose up -d --build
+    ```
+  </Step>
+</Steps>
+
+## Data Migration
+
+Most updates don't require data migration. If migration is needed, instructions will be in the release notes.
+
+### Backup Before Update
+
+Always backup data before major updates:
+
+```bash
+cd /mnt/user/appdata/Unraid-PWA
+tar -czf backup-pre-update-$(date +%Y%m%d).tar.gz backend/data
+```
+
+See [Data Persistence](/deployment/data-persistence) for detailed backup procedures.
+
+## Post-Update Verification
+
+After updating, verify the installation:
+
+<Steps>
+  <Step title="Check container status">
+    ```bash
+    docker compose ps
+    ```
+
+    Should show "Up" and "healthy".
+  </Step>
+
+  <Step title="Check logs">
+    ```bash
+    docker compose logs -f --tail=50
+    ```
+
+    Look for startup messages and errors.
+  </Step>
+
+  <Step title="Test web interface">
+    Open `http://<UNRAID-IP>:2442` and verify:
+    - App loads correctly
+    - Server connection works
+    - Dashboard displays data
+  </Step>
+
+  <Step title="Test functionality">
+    Verify key features:
+    - View containers
+    - View VMs
+    - View storage
+    - Perform a safe action (e.g., refresh data)
+  </Step>
+</Steps>
+
+## Troubleshooting Updates
+
+### Update Fails to Pull Image
+
+Check network connectivity:
+
+```bash
+docker pull ghcr.io/laurensguijt/unraid-pwa:latest
+```
+
+If it fails, check:
+- Internet connection
+- GitHub Container Registry status
+- Docker Hub authentication (if using Docker Hub mirror)
+
+### Container Won't Start After Update
+
+Check logs for errors:
+
+```bash
+docker compose logs
+```
+
+Common issues:
+- Port conflicts
+- Volume mount permission errors
+- Environment variable changes
+
+### Data Not Persisting After Update
+
+Verify volume mount:
+
+```bash
+docker inspect unraid-pwa | grep -A 5 Mounts
+```
+
+Should show:
+```json
+"Mounts": [
+  {
+    "Source": "/mnt/user/appdata/Unraid-PWA/backend/data",
+    "Destination": "/app/data"
+  }
+]
+```
+
+### Configuration Reset After Update
+
+Check if data directory exists:
+
+```bash
+ls -la /mnt/user/appdata/Unraid-PWA/backend/data
+```
+
+Restore from backup if needed:
+
+```bash
+tar -xzf backup-pre-update-YYYYMMDD.tar.gz -C backend/data
+```
+
+## Update Notifications
+
+To get notified of new releases:
+
+1. Watch the GitHub repository
+2. Subscribe to release notifications
+3. Join the community Discord/forum (if available)
+
+## Next Steps
+
+- [Docker Compose deployment](/deployment/docker-compose)
+- [Data persistence](/deployment/data-persistence)
+- [Environment variables](/deployment/environment-variables)

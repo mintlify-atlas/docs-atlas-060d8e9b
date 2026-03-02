@@ -1,0 +1,207 @@
+---
+title: API Overview
+description: Architecture and design principles of the Unraid PWA API
+---
+
+The Unraid PWA API is built using a Backend-For-Frontend (BFF) architecture that acts as an intermediary between the web application and your Unraid server.
+
+## Backend-For-Frontend Architecture
+
+The BFF serves multiple purposes:
+
+- **Credential Management**: Securely stores Unraid server credentials and API keys in the system keyring
+- **CSRF Protection**: Implements Double Submit Cookie pattern to prevent cross-site request forgery
+- **Request Proxying**: Forwards authenticated requests to your Unraid server's API
+- **Error Handling**: Provides consistent error responses and validation
+- **Static File Serving**: Hosts the frontend application from `/backend/public`
+
+### Architecture Benefits
+
+1. **Security**: Server credentials never leave the backend, reducing exposure
+2. **Flexibility**: Can manage multiple Unraid servers from a single interface
+3. **Offline Support**: The PWA frontend works offline while the BFF handles server communication
+4. **Separation of Concerns**: Frontend focuses on UI while backend handles authentication and proxying
+
+## Base URL
+
+All API endpoints are prefixed with `/api`:
+
+```
+http://localhost:3001/api
+```
+
+The port can be configured via the `UNRAID_BFF_PORT` environment variable (default: 3001).
+
+## CORS Configuration
+
+CORS is configured dynamically based on environment variables and request origin:
+
+### Allowed Origins
+
+The `UNRAID_BFF_ORIGIN` environment variable accepts:
+
+- `*` - Allow any origin (development mode)
+- Comma-separated list of specific origins: `http://localhost:5173,https://app.example.com`
+
+### Same-Origin Requests
+
+Requests from the same origin as the BFF are always allowed, even if not explicitly listed in `UNRAID_BFF_ORIGIN`. The origin check:
+
+1. Extracts the origin from the request header
+2. Compares against `x-forwarded-host` or `host` header
+3. Normalizes both to lowercase for comparison
+
+### CORS Headers
+
+When origin is allowed:
+
+```http
+Access-Control-Allow-Origin: <origin>
+Access-Control-Allow-Credentials: true
+```
+
+## Request/Response Format
+
+### Request Body
+
+All POST/PUT requests accept JSON with a 256KB size limit:
+
+```json
+{
+  "name": "My Unraid Server",
+  "baseUrl": "https://tower.local"
+}
+```
+
+### Response Format
+
+Successful responses return JSON:
+
+```json
+{
+  "ok": true,
+  "serverId": "550e8400-e29b-41d4-a716-446655440000"
+}
+```
+
+Error responses include an `error` field and optional `detail`:
+
+```json
+{
+  "error": "Server not found",
+  "detail": "No server exists with id: abc123"
+}
+```
+
+## Error Handling
+
+### HTTP Status Codes
+
+| Status | Meaning | Example |
+|--------|---------|----------|
+| `200` | Success | Resource retrieved |
+| `201` | Created | Server added successfully |
+| `400` | Bad Request | Invalid request body or parameters |
+| `403` | Forbidden | CSRF validation failed |
+| `404` | Not Found | Server or resource not found |
+| `429` | Too Many Requests | Rate limit exceeded |
+| `500` | Internal Server Error | Unexpected server error |
+| `502` | Bad Gateway | Unraid server connection failed |
+
+### Error Response Structure
+
+All errors follow a consistent format:
+
+```typescript
+interface ErrorResponse {
+  error: string;        // Human-readable error message
+  detail?: string;      // Technical details (when available)
+}
+```
+
+Example error from `backend/src/index.ts:79-88`:
+
+```typescript
+app.use((error: unknown, req: Request, res: Response, next: NextFunction) => {
+  if (req.path.startsWith("/api")) {
+    res.status(500).json({
+      error: "Internal server error",
+      detail: error instanceof Error ? error.message : "Unknown error",
+    });
+    return;
+  }
+  next(error);
+});
+```
+
+## Rate Limiting
+
+Write operations (POST, PUT, DELETE) are rate limited to prevent abuse:
+
+- **Limit**: 20 requests per IP address
+- **Window**: 60 seconds (1 minute)
+- **Scope**: Applied to all state-changing operations
+- **Response**: `429 Too Many Requests` when exceeded
+
+### Implementation
+
+Rate limiting uses an in-memory store tracking timestamps per IP address. The middleware automatically cleans up expired entries.
+
+From `backend/src/middleware/writeRateLimit.ts:4-5`:
+
+```typescript
+const WINDOW_MS = 60_000;
+const LIMIT = 20;
+```
+
+### Affected Endpoints
+
+All endpoints using `requireCsrf` and `writeRateLimit` middleware:
+
+- `POST /api/servers` - Add server
+- `PUT /api/servers/:id` - Update server
+- `DELETE /api/servers/:id` - Remove server
+- `POST /api/servers/:id/activate` - Activate server
+- `POST /api/servers/:id/test-key` - Test API key
+- `POST /api/docker/:id/:action` - Docker container actions
+- `POST /api/vms/:id/:action` - VM actions
+- `POST /api/array/:action` - Array start/stop
+- `POST /api/notifications/:id/archive` - Archive notification
+- `PUT /api/settings/app` - Update app settings
+
+## Health Check
+
+The BFF provides a health check endpoint outside the `/api` prefix:
+
+```http
+GET /health
+```
+
+Response:
+
+```json
+{
+  "ok": true,
+  "service": "unraid-pwa-bff"
+}
+```
+
+This endpoint does not require authentication or CSRF tokens.
+
+## Proxy Configuration
+
+When running behind a reverse proxy, set the trust proxy configuration:
+
+```bash
+UNRAID_BFF_TRUST_PROXY=true
+```
+
+Supported values:
+
+- `true` - Trust first hop proxy
+- `loopback` - Trust loopback addresses
+- `linklocal` - Trust link-local addresses
+- `uniquelocal` - Trust unique local addresses
+- `false` - Don't trust any proxy (default)
+
+When enabled, the BFF respects `X-Forwarded-Host`, `X-Forwarded-Proto`, and client IP headers for CORS and rate limiting.

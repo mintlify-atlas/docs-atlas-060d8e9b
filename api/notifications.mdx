@@ -1,0 +1,73 @@
+---
+title: 'Notifications'
+description: 'Endpoints for managing notifications'
+---
+
+## Archive Notification
+
+<RequestExample>
+```bash cURL
+curl -X POST http://localhost:3000/api/notifications/{notificationId}/archive \
+  -H "X-CSRF-Token: your-csrf-token" \
+  -H "Cookie: unpwa_csrf=your-csrf-token"
+```
+</RequestExample>
+
+Archives a notification on the Unraid server.
+
+**Authentication:** Requires CSRF token and write permissions
+
+**Rate Limit:** 20 requests per minute per IP
+
+**Audit Log:** Creates audit log entry with action "notification:archive" and notification ID
+
+<ParamField path="id" type="string" required>
+  The notification ID to archive. Maximum length: 160 characters.
+</ParamField>
+
+<ResponseField name="ok" type="boolean">
+  Indicates successful archive operation.
+</ResponseField>
+
+**Error Responses:**
+- `400` - Invalid notification ID
+- `403` - CSRF validation failed or insufficient permissions
+- `429` - Rate limit exceeded
+- `500` - Archive notification failed
+
+<Note>
+Notifications are also included in the [overview data](/api/overview-data) endpoint response. The notification objects contain id, type, title, category, date, and snippet fields.
+</Note>
+
+## Get Notifications
+
+Notifications are retrieved as part of the [overview endpoint](/api/overview-data). The response includes:
+
+- **notifications** - Array of recent notifications with full details
+- **unreadNotifications** - Summary counts by severity (info, warning, alert, total)
+
+Each notification object includes:
+
+<ResponseField name="id" type="string">
+  Unique notification identifier (used for archiving).
+</ResponseField>
+
+<ResponseField name="type" type="string">
+  Notification severity: "info", "warning", or "alert".
+</ResponseField>
+
+<ResponseField name="title" type="string">
+  Notification title.
+</ResponseField>
+
+<ResponseField name="category" type="string">
+  Notification category.
+</ResponseField>
+
+<ResponseField name="date" type="string">
+  Notification timestamp.
+</ResponseField>
+
+<ResponseField name="snippet" type="string">
+  Notification content preview.
+</ResponseField>

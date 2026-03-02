@@ -1,0 +1,268 @@
+---
+title: Data Persistence
+description: Understanding and managing persistent data in Unraid PWA
+---
+
+Unraid PWA stores persistent data in the `backend/data` directory. This guide explains what data is stored and how to back it up.
+
+## Data Directory
+
+Persistent application data is stored in:
+
+```
+backend/data/
+├── servers.enc       # Encrypted server credentials
+├── encryption.key    # Local encryption key
+└── audit.log         # Write action audit log
+```
+
+## Volume Mount
+
+The `docker-compose.yml` configuration maps the data directory:
+
+```yaml
+volumes:
+  - ./backend/data:/app/data
+```
+
+This ensures data persists across container restarts and updates.
+
+## Data Files
+
+### servers.enc
+
+**Purpose:** Stores encrypted Unraid server credentials
+
+**Contents:**
+- Unraid server URL
+- API key
+- Connection settings
+
+**Encryption:** AES-256-GCM encryption using the key from `encryption.key`
+
+**Location:**
+- Host: `./backend/data/servers.enc`
+- Container: `/app/data/servers.enc`
+
+<Warning>
+  This file contains sensitive credentials. Never commit it to version control or share it publicly.
+</Warning>
+
+### encryption.key
+
+**Purpose:** Local encryption key for securing server credentials
+
+**Generation:**
+- Auto-generated on first run if not provided via `UNRAID_BFF_ENCRYPTION_KEY`
+- Persisted to disk for subsequent runs
+
+**Location:**
+- Host: `./backend/data/encryption.key`
+- Container: `/app/data/encryption.key`
+
+<Warning>
+  Loss of this key means you cannot decrypt saved server credentials. Back it up securely.
+</Warning>
+
+### audit.log
+
+**Purpose:** Logs all write actions performed through the app
+
+**Contents:**
+- Timestamp of actions
+- Type of operation (start container, stop VM, etc.)
+- User/session information
+- Result of operation
+
+**Location:**
+- Host: `./backend/data/audit.log`
+- Container: `/app/data/audit.log`
+
+**Format:** Line-delimited JSON (JSONL)
+
+## Data Directory Creation
+
+The data directory is created automatically:
+
+1. **In Dockerfile:**
+   ```dockerfile
+   RUN mkdir -p /app/data
+   ```
+
+2. **On volume mount:** Docker creates `./backend/data` on the host if it doesn't exist
+
+## Backup Strategy
+
+### Manual Backup
+
+Back up the entire data directory:
+
+```bash
+cd /mnt/user/appdata/Unraid-PWA
+tar -czf unraid-pwa-backup-$(date +%Y%m%d).tar.gz backend/data
+```
+
+### Automated Backup Script
+
+Create a backup script:
+
+```bash
+#!/bin/bash
+BACKUP_DIR="/mnt/user/backups/unraid-pwa"
+SOURCE_DIR="/mnt/user/appdata/Unraid-PWA/backend/data"
+DATE=$(date +%Y%m%d-%H%M%S)
+
+mkdir -p "$BACKUP_DIR"
+tar -czf "$BACKUP_DIR/backup-$DATE.tar.gz" -C "$SOURCE_DIR" .
+
+# Keep only last 7 backups
+cd "$BACKUP_DIR"
+ls -t backup-*.tar.gz | tail -n +8 | xargs rm -f
+```
+
+Schedule with cron:
+
+```bash
+0 2 * * * /mnt/user/scripts/backup-unraid-pwa.sh
+```
+
+### What to Back Up
+
+**Critical:**
+- `servers.enc` - Without this, you'll need to reconfigure servers
+- `encryption.key` - Without this, you cannot decrypt `servers.enc`
+
+**Optional:**
+- `audit.log` - Useful for compliance and troubleshooting
+
+## Restore from Backup
+
+<Steps>
+  <Step title="Stop the service">
+    ```bash
+    cd /mnt/user/appdata/Unraid-PWA
+    docker compose down
+    ```
+  </Step>
+
+  <Step title="Extract backup">
+    ```bash
+    cd /mnt/user/appdata/Unraid-PWA
+    rm -rf backend/data/*
+    tar -xzf /path/to/backup.tar.gz -C backend/data
+    ```
+  </Step>
+
+  <Step title="Verify permissions">
+    ```bash
+    chown -R 1000:1000 backend/data
+    chmod 600 backend/data/servers.enc
+    chmod 600 backend/data/encryption.key
+    ```
+  </Step>
+
+  <Step title="Start the service">
+    ```bash
+    docker compose up -d
+    ```
+  </Step>
+</Steps>
+
+## Migration Between Servers
+
+To migrate Unraid PWA to a different server:
+
+<Steps>
+  <Step title="Backup data from source">
+    ```bash
+    cd /mnt/user/appdata/Unraid-PWA
+    tar -czf unraid-pwa-migration.tar.gz backend/data .env
+    ```
+  </Step>
+
+  <Step title="Transfer to destination">
+    Copy `unraid-pwa-migration.tar.gz` to the new server
+  </Step>
+
+  <Step title="Install on destination">
+    Follow the [Docker Compose deployment](/deployment/docker-compose) guide
+  </Step>
+
+  <Step title="Restore data">
+    ```bash
+    cd /mnt/user/appdata/Unraid-PWA
+    tar -xzf /path/to/unraid-pwa-migration.tar.gz
+    docker compose up -d
+    ```
+  </Step>
+</Steps>
+
+## Data Security
+
+### Encryption
+
+- Server credentials are encrypted with AES-256-GCM
+- Encryption key is stored locally (not in database)
+- Each installation has a unique encryption key
+
+### File Permissions
+
+Recommended permissions:
+
+```bash
+chmod 700 backend/data
+chmod 600 backend/data/servers.enc
+chmod 600 backend/data/encryption.key
+chmod 644 backend/data/audit.log
+```
+
+### Access Control
+
+- Only the Docker container should have access to `/app/data`
+- Use Unraid user shares permissions to restrict host access
+- Consider encrypting the entire appdata share
+
+## Troubleshooting
+
+### Missing Data Directory
+
+If the data directory is missing:
+
+```bash
+cd /mnt/user/appdata/Unraid-PWA
+mkdir -p backend/data
+chown -R 1000:1000 backend/data
+docker compose restart
+```
+
+### Corrupted Data Files
+
+If data files are corrupted:
+
+1. Stop the service
+2. Restore from backup
+3. If no backup exists, delete corrupted files (you'll need to reconfigure)
+
+```bash
+cd /mnt/user/appdata/Unraid-PWA
+docker compose down
+rm backend/data/servers.enc
+rm backend/data/encryption.key
+docker compose up -d
+```
+
+### Permission Errors
+
+Fix permission issues:
+
+```bash
+cd /mnt/user/appdata/Unraid-PWA
+chown -R 1000:1000 backend/data
+docker compose restart
+```
+
+## Next Steps
+
+- [Docker Compose deployment](/deployment/docker-compose)
+- [Environment variables](/deployment/environment-variables)
+- [Update procedures](/deployment/updating)

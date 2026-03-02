@@ -1,0 +1,287 @@
+---
+title: Shares & Storage
+description: Monitor user shares and storage allocation across your Unraid array
+---
+
+The Shares tab provides visibility into your Unraid user shares, displaying storage utilization, allocation methods, and share configuration details.
+
+## Accessing Shares
+
+Navigate to the Shares tab by:
+
+1. Tapping the **Shares** icon in the bottom navigation bar
+2. The header displays "Shares"
+3. The `SharesTab` component loads share data from `/api/shares`
+
+## Share Display
+
+Each user share is displayed as an individual card via the `SharesTab` component:
+
+### Share Card Header
+
+- **Share name** - Display name in bold
+- **Location badge** - Shows where the share resides
+  - Typically "array" or specific cache pool name
+  - Displayed as a `BadgePill` component
+
+### Share Configuration
+
+Each share displays key configuration parameters:
+
+#### Split Level
+
+- **What it is:** Controls how files are distributed across array disks
+- **Display:** Shows the configured split level value
+- **Values:** Typically "Automatic", "Manual", or specific split level numbers
+- **Icon:** No icon (plain `IconRow`)
+
+#### Allocator
+
+- **What it is:** Method used to choose which disk receives new files
+- **Display:** Allocator type name
+- **Common values:**
+  - "High-water" - Fills disks sequentially
+  - "Fill-up" - Fills each disk before moving to next
+  - "Most-free" - Writes to disk with most free space
+- **Icon:** `LayoutGrid` icon
+
+### Storage Utilization
+
+Each share displays detailed capacity information:
+
+#### Used Space
+
+- **Label:** "Used"
+- **Value:** Human-readable size (e.g., "1.2 TB", "500 GB")
+- **Icon:** `Gauge` icon
+- Shows total storage consumed by files in this share
+
+#### Free Space
+
+- **Label:** "Free"
+- **Value:** Human-readable size
+- **Icon:** `CircleX` icon
+- Shows available storage capacity for this share
+
+#### Usage Percentage
+
+- **Display:** Visual progress bar
+- **Value:** Percentage of total capacity used
+- **Color:** Typically green/blue gradient
+- Provides quick visual assessment of share fullness
+
+## Share Data Structure
+
+Each share object contains:
+
+```typescript
+{
+  id: string,           // Unique share identifier
+  name: string,         // Display name
+  location: string,     // "array" or pool name
+  splitLevel: string,   // Split level configuration
+  allocator: string,    // Allocation method
+  used: string,         // Used space (formatted)
+  free: string,         // Free space (formatted)
+  usagePercent: number  // 0-100 percentage
+}
+```
+
+## Share List Behavior
+
+### No Shares
+
+When no shares exist:
+- The tab loads successfully
+- Empty array is displayed
+- No error or placeholder message (just empty list)
+
+### Multiple Shares
+
+- Shares are displayed in the order returned by the API
+- No client-side sorting applied
+- Each share gets a unique React key based on `share.id`
+- Vertical scrolling accommodates long share lists
+
+## Read-Only Display
+
+The Shares tab is **informational only**:
+
+- No edit capabilities
+- No delete functions
+- No share creation
+- No configuration changes
+
+All share management must be performed through the Unraid web interface.
+
+<Note>
+The PWA Shares tab focuses on monitoring and visibility. To create, modify, or delete shares, use the full Unraid web interface.
+</Note>
+
+## Data Refresh
+
+Share data updates automatically:
+
+- Fetched from `/api/shares` endpoint via `fetchShares()`
+- Refresh interval matches app settings (default: 5 seconds)
+- Updates include:
+  - Storage usage changes
+  - Configuration updates (if modified via web interface)
+  - New or removed shares
+
+## Understanding Share Locations
+
+### Array Shares
+
+- **Location:** "array"
+- Files stored across multiple array disks
+- Subject to split level rules
+- Protected by parity (if configured)
+
+### Cache/Pool Shares
+
+- **Location:** Pool name (e.g., "cache", "nvme")
+- Files stored on specific cache pool
+- May be faster than array (SSD/NVMe)
+- May have different redundancy (RAID configuration)
+
+### Hybrid Shares
+
+Some shares use both array and cache:
+- Files may start on cache
+- Mover script transfers to array
+- Location shows where files currently reside
+- PWA displays current location state
+
+## Storage Metrics
+
+### Human-Readable Sizes
+
+All sizes are formatted for readability:
+
+- **Bytes:** B
+- **Kilobytes:** KB
+- **Megabytes:** MB
+- **Gigabytes:** GB
+- **Terabytes:** TB
+- **Petabytes:** PB
+
+Formatting is handled by the Unraid server before sending to PWA.
+
+### Usage Percentage Calculation
+
+- Calculated as: `(used / (used + free)) * 100`
+- Rounded to nearest integer
+- Used for progress bar width
+- Value between 0 and 100
+
+## Visual Components
+
+### FrostedCard
+
+Each share is wrapped in a `FrostedCard` component:
+- Provides visual separation
+- Frosted glass effect
+- Rounded corners
+- Subtle shadow
+
+### IconRow
+
+Share details use `IconRow` components:
+- Icon on the left
+- Label in the middle
+- Value on the right
+- Consistent spacing and alignment
+
+### ProgressBar
+
+Usage visualization via `ProgressBar` component:
+- Width proportional to usage percentage
+- Smooth CSS transitions
+- Responsive to container width
+
+### BadgePill
+
+Location indicator uses `BadgePill`:
+- Compact badge style
+- Background color differentiation
+- Rounded pill shape
+
+## Performance Considerations
+
+### Efficient Rendering
+
+The `SharesTab` component:
+- Uses React keys for optimal reconciliation
+- No unnecessary state variables
+- Direct props mapping
+- Minimal re-renders
+
+### Data Size
+
+Shares endpoint returns:
+- Only essential share information
+- Pre-formatted strings (no client-side formatting)
+- Compact JSON payload
+- Fast parsing and rendering
+
+## API Integration
+
+Shares data flow:
+
+1. Frontend calls `fetchShares()` on interval
+2. Backend executes `GET /api/shares`
+3. Backend queries Unraid server via API
+4. Response parsed and formatted
+5. JSON returned to frontend
+6. `SharesTab` component renders updated data
+
+## Common Use Cases
+
+### Monitor Share Growth
+
+- Check usage percentages regularly
+- Identify shares nearing capacity
+- Plan storage expansion
+- Track usage trends over time
+
+### Verify Share Configuration
+
+- Confirm split level settings
+- Check allocator method
+- Verify location (array vs. pool)
+- Ensure settings match expectations
+
+### Storage Planning
+
+- Calculate remaining capacity
+- Project future storage needs
+- Identify candidates for cleanup
+- Optimize share placement
+
+## Limitations
+
+### No Drill-Down
+
+- Cannot view files within shares
+- Cannot see per-disk allocation
+- No detailed breakdown of space usage
+- Use Unraid web interface for detailed analysis
+
+### No Mover Control
+
+- Cannot trigger mover script
+- Cannot see mover status
+- Cannot configure mover schedule
+- Mover operations require web interface
+
+### No Share Settings
+
+- Cannot modify split level
+- Cannot change allocator
+- Cannot set permissions
+- All configuration via web interface
+
+<Info>
+For advanced share management, including file browsing, mover control, and configuration changes, use the full Unraid web interface or SSH access.
+</Info>

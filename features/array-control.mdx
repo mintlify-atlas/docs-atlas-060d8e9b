@@ -1,0 +1,222 @@
+---
+title: Array Control
+description: Monitor storage array status and control array operations from your mobile device
+---
+
+The Array tab provides comprehensive control and monitoring of your Unraid storage array, including array operations, disk health, and capacity management.
+
+## Accessing Array Control
+
+Navigate to the Array tab by:
+
+1. Tapping the **Array** (or **Storage**) icon in the bottom navigation bar
+2. The header changes to display "Storage"
+3. The `ArrayTab` component loads array data from `/api/array`
+
+## Array Overview
+
+The overview card displays high-level array status:
+
+### Capacity Metrics
+
+- **State** - Array status (Started, Stopped, etc.)
+- **Used** - Total storage consumed across the array
+- **Free** - Available storage capacity
+- **Total** - Combined capacity of all array disks
+- **Usage percentage** - Visual progress bar showing capacity utilization
+
+All metrics are displayed using icon-labeled rows with corresponding icons:
+- `HardDrive` for state
+- `Gauge` for used space
+- `CircleX` for free space
+- `LayoutGrid` for total capacity
+
+### Device Count Badge
+
+A badge pill displays the total number of devices (parity + array + pool disks) in your configuration.
+
+## Array Operations
+
+The overview card includes action buttons for array control:
+
+### Start Array
+
+1. Tap the **"Start array"** button
+2. A confirmation dialog appears via `ConfirmDialog` component
+3. Confirm the action
+4. The PWA calls `runArrayAction('start')` via `POST /api/array/start`
+5. The action is audited in the backend logs
+6. Array state updates on next data refresh
+
+### Stop Array
+
+1. Tap the **"Stop array"** button
+2. Confirmation dialog prompts for verification
+3. Confirm the action
+4. Calls `runArrayAction('stop')` via `POST /api/array/stop`
+5. Array stops and state updates
+
+<Warning>
+Stopping the array will unmount all shares and make data inaccessible until the array is restarted. Ensure all file operations are complete before stopping.
+</Warning>
+
+## Parity Disks
+
+Parity disks are displayed in a dedicated card:
+
+### Parity Disk Information
+
+For each parity disk:
+
+- **Disk label** - "Parity disk 1", "Parity disk 2", etc.
+- **Device ID** - System identifier (shown in badge pill)
+- **Temperature** - Current disk temperature
+- **Size** - Total disk capacity
+- **Errors** - Read/write error count
+
+Parity disks are automatically sorted by ID using natural sorting (disk1, disk2, etc.).
+
+### No Parity Indicator
+
+If no parity disks are configured:
+- A message displays: "No parity disks detected."
+- This indicates the array is running without parity protection
+
+## Array Disks
+
+Data disks in the array are shown with detailed information:
+
+### Per-Disk Metrics
+
+- **Disk label** - "Array disk 1", "Array disk 2", etc.
+- **Device ID** - System identifier badge
+- **Temperature** - Current operating temperature
+- **Filesystem** - Format type (XFS, BTRFS, etc.)
+- **Size** - Total disk capacity
+- **Errors** - Error count
+- **Used** - Consumed storage on this disk
+- **Free** - Available space on this disk
+- **Usage percentage** - Visual progress bar
+
+### Disk Sorting
+
+Array disks are sorted using natural sorting logic:
+- disk1 comes before disk2
+- disk2 comes before disk10
+- Ensures intuitive disk ordering
+
+### Empty Array Indicator
+
+If no array disks exist:
+- Message: "No array disks detected."
+- May indicate a cache-only or parity-only configuration
+
+## Pool Disks
+
+Cache pools and NVMe pools are displayed separately:
+
+### Pool Disk Information
+
+- **Disk label** - "Pool disk 1", "Pool disk 2", etc.
+- **Device ID** - System identifier
+- **Temperature** - Current temperature
+- **Filesystem** - Format type or "redundant member"
+- **Size** - Total capacity
+- **Errors** - Error count
+- **Used** - Space consumed (if primary pool member)
+- **Free** - Available space (if primary pool member)
+- **Usage bar** - Shows utilization for primary members
+
+### Redundant Pool Members
+
+The PWA intelligently detects redundant pool members in RAID configurations:
+
+#### Detection Logic
+
+A pool disk is flagged as redundant when:
+1. Filesystem shows as "unknown"
+2. Usage percent is 0 and used/free show "0 B" or "-"
+3. Another pool disk exists with a valid filesystem
+
+This logic is implemented in the `redundantPoolMemberFlags` useMemo hook.
+
+#### Redundant Member Display
+
+- Filesystem shows: **"redundant member"**
+- Usage statistics are hidden
+- Explanatory text: "Likely redundant pool member; usage is reported on the primary pool disk."
+- Only size, temperature, and errors are shown
+
+<Info>
+In BTRFS RAID1 or other redundant pool configurations, capacity is reported on the primary member while redundant members show minimal information to avoid confusion.
+</Info>
+
+## Disk Health Monitoring
+
+### Temperature Tracking
+
+Each disk displays current temperature:
+- Shown with thermometer icon
+- Value in Celsius or Fahrenheit (based on Unraid settings)
+- Helps identify cooling issues
+
+### Error Monitoring
+
+Read/write errors are tracked per disk:
+- Displayed with activity icon
+- Non-zero errors may indicate disk problems
+- Regular monitoring helps catch failing disks early
+
+## Write Permission Requirements
+
+Array control buttons (Start/Stop) require write scopes:
+
+- If your API key has only read permissions, buttons are **disabled**
+- The `canWriteControls` prop controls button availability
+- Check your API key scopes in Settings if controls are unavailable
+
+## Data Refresh
+
+Array data updates automatically:
+
+- Fetched from `/api/array` endpoint
+- Refresh interval matches app settings (default: 5 seconds)
+- The `fetchArray()` function retrieves all array information
+- Updates include disk status, capacity, and array state
+
+## Device Filtering
+
+Disks are automatically categorized by type:
+
+- **Parity** - Devices where `isParity` is true
+- **Array** - Devices where `diskType` is "array"
+- **Pool** - Devices where `diskType` is "pool"
+
+This filtering is performed in useMemo hooks for optimal performance:
+- `parityDisks`
+- `arrayDisks`
+- `poolDisks`
+
+## Visual Indicators
+
+### Progress Bars
+
+Usage progress bars provide quick visual assessment:
+- Green/blue for normal usage
+- Shows exact percentage when `showPercentage` prop is enabled
+- Helps identify disks nearing capacity
+
+### Status Badges
+
+Badge pills show:
+- Device count (top-right of section headers)
+- Device IDs (next to disk labels)
+- Provides quick reference without cluttering the interface
+
+## Audit Logging
+
+All array actions are logged:
+- Action type ("array:start" or "array:stop")
+- Target ("array")
+- Result ("ok" or "failed")
+- Written to audit log via `writeAuditLog()`

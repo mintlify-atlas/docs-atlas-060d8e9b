@@ -1,0 +1,257 @@
+---
+title: 'Overview Data'
+description: 'Endpoint for retrieving dashboard overview data'
+---
+
+## Get Overview
+
+<RequestExample>
+```bash cURL
+curl http://localhost:3000/api/overview
+```
+</RequestExample>
+
+Retrieves comprehensive dashboard overview data including system metrics, array status, notifications, and UPS information.
+
+**Authentication:** Requires active server configuration
+
+<ResponseField name="cpuPercent" type="number">
+  Current CPU usage percentage (0-100).
+</ResponseField>
+
+<ResponseField name="cpuModel" type="string">
+  CPU model name.
+</ResponseField>
+
+<ResponseField name="cpuCores" type="number">
+  Number of physical CPU cores.
+</ResponseField>
+
+<ResponseField name="cpuThreads" type="number">
+  Number of CPU threads.
+</ResponseField>
+
+<ResponseField name="cpuSpeedGhz" type="number">
+  CPU speed in GHz.
+</ResponseField>
+
+<ResponseField name="memoryPercent" type="number">
+  Memory usage percentage (0-100).
+</ResponseField>
+
+<ResponseField name="memoryUsed" type="string">
+  Used memory (human-readable format, e.g., "8.2 GB").
+</ResponseField>
+
+<ResponseField name="memoryTotal" type="string">
+  Total memory (human-readable format).
+</ResponseField>
+
+<ResponseField name="memoryAvailable" type="string">
+  Available memory (human-readable format).
+</ResponseField>
+
+<ResponseField name="memoryCache" type="string">
+  Cached memory (human-readable format).
+</ResponseField>
+
+<ResponseField name="memoryFree" type="string">
+  Free memory (human-readable format).
+</ResponseField>
+
+<ResponseField name="serverName" type="string">
+  Unraid server name.
+</ResponseField>
+
+<ResponseField name="licenseType" type="string">
+  Unraid license type (e.g., "Pro", "Plus", "Basic").
+</ResponseField>
+
+<ResponseField name="unraidVersion" type="string">
+  Unraid OS version.
+</ResponseField>
+
+<ResponseField name="kernelVersion" type="string">
+  Linux kernel version.
+</ResponseField>
+
+<ResponseField name="osDistro" type="string">
+  OS distribution name.
+</ResponseField>
+
+<ResponseField name="osType" type="string">
+  OS type.
+</ResponseField>
+
+<ResponseField name="hostname" type="string">
+  System hostname.
+</ResponseField>
+
+<ResponseField name="motherboard" type="string">
+  Motherboard model.
+</ResponseField>
+
+<ResponseField name="uptime" type="string">
+  System uptime (human-readable format).
+</ResponseField>
+
+<ResponseField name="serverTime" type="string">
+  Current server time.
+</ResponseField>
+
+<ResponseField name="arrayState" type="string">
+  Current array state (e.g., "Started", "Stopped").
+</ResponseField>
+
+<ResponseField name="arrayUsagePercent" type="number">
+  Array storage usage percentage (0-100).
+</ResponseField>
+
+<ResponseField name="arrayUsed" type="string">
+  Used array storage (human-readable format).
+</ResponseField>
+
+<ResponseField name="arrayFree" type="string">
+  Free array storage (human-readable format).
+</ResponseField>
+
+<ResponseField name="arrayTotal" type="string">
+  Total array storage (human-readable format).
+</ResponseField>
+
+<ResponseField name="parity" type="object">
+  Parity status information.
+  <Expandable title="Parity object">
+    <ResponseField name="status" type="string">
+      Current parity status.
+    </ResponseField>
+    <ResponseField name="progress" type="number">
+      Parity operation progress percentage (0-100).
+    </ResponseField>
+    <ResponseField name="errors" type="number">
+      Number of parity errors.
+    </ResponseField>
+    <ResponseField name="running" type="boolean">
+      Whether a parity operation is currently running.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="lastParityCheck" type="object">
+  Information about the most recent parity check.
+  <Expandable title="Last parity check object">
+    <ResponseField name="date" type="string">
+      Date of last parity check.
+    </ResponseField>
+    <ResponseField name="duration" type="string">
+      Duration of last parity check (human-readable).
+    </ResponseField>
+    <ResponseField name="speed" type="string">
+      Average speed of last parity check.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="ups" type="object">
+  UPS information.
+  <Expandable title="UPS object">
+    <ResponseField name="devices" type="array">
+      Array of connected UPS devices.
+      <Expandable title="UPS device object">
+        <ResponseField name="id" type="string">
+          Unique UPS device identifier.
+        </ResponseField>
+        <ResponseField name="name" type="string">
+          UPS device name.
+        </ResponseField>
+        <ResponseField name="model" type="string">
+          UPS model.
+        </ResponseField>
+        <ResponseField name="status" type="string">
+          Current UPS status.
+        </ResponseField>
+        <ResponseField name="batteryLevel" type="number">
+          Battery level percentage (0-100).
+        </ResponseField>
+        <ResponseField name="estimatedRuntimeSeconds" type="number">
+          Estimated runtime in seconds.
+        </ResponseField>
+        <ResponseField name="batteryHealth" type="string">
+          Battery health status.
+        </ResponseField>
+        <ResponseField name="inputVoltage" type="number">
+          Input voltage.
+        </ResponseField>
+        <ResponseField name="outputVoltage" type="number">
+          Output voltage.
+        </ResponseField>
+        <ResponseField name="loadPercentage" type="number">
+          Load percentage (0-100).
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="unreadNotifications" type="object">
+  Summary of unread notifications by severity.
+  <Expandable title="Unread notifications object">
+    <ResponseField name="info" type="number">
+      Number of info notifications.
+    </ResponseField>
+    <ResponseField name="warning" type="number">
+      Number of warning notifications.
+    </ResponseField>
+    <ResponseField name="alert" type="number">
+      Number of alert notifications.
+    </ResponseField>
+    <ResponseField name="total" type="number">
+      Total number of unread notifications.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="accessUrls" type="array">
+  Server access URLs.
+  <Expandable title="Access URL object">
+    <ResponseField name="type" type="string">
+      URL type.
+    </ResponseField>
+    <ResponseField name="name" type="string">
+      Network interface name.
+    </ResponseField>
+    <ResponseField name="ipv4" type="string">
+      IPv4 address.
+    </ResponseField>
+    <ResponseField name="ipv6" type="string">
+      IPv6 address.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="notifications" type="array">
+  Recent notifications.
+  <Expandable title="Notification object">
+    <ResponseField name="id" type="string">
+      Unique notification identifier.
+    </ResponseField>
+    <ResponseField name="type" type="string">
+      Notification severity: "info", "warning", or "alert".
+    </ResponseField>
+    <ResponseField name="title" type="string">
+      Notification title.
+    </ResponseField>
+    <ResponseField name="category" type="string">
+      Notification category.
+    </ResponseField>
+    <ResponseField name="date" type="string">
+      Notification date/time.
+    </ResponseField>
+    <ResponseField name="snippet" type="string">
+      Notification content snippet.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+**Error Responses:**
+- `500` - Overview fetch failed (server not configured or unreachable)

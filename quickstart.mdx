@@ -1,80 +1,260 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quick start
+description: Get up and running with Unraid PWA in minutes
 ---
 
-## Get started in three steps
+<Note>
+  **Already installed?** If you haven't installed Unraid PWA yet, see the [Installation Guide](/installation) first.
+</Note>
 
-Get your documentation site running locally and make your first customization.
+## Access the interface
 
-### Step 1: Set up your local environment
+Once the container is running, open your browser and navigate to:
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
+```
+http://<UNRAID-IP>:2442
+```
+
+Replace `<UNRAID-IP>` with your Unraid server's IP address (e.g., `http://192.168.1.100:2442`).
+
+## First-time setup
+
+On your first visit, you'll see the setup form:
+
+<Steps>
+  <Step title="Enter your Unraid server URL">
+    Input your Unraid server's address with the GraphQL API port:
     
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
+    ```
+    https://<unraid-ip>:3443
+    ```
     
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+    For example: `https://192.168.1.100:3443`
 
-### Step 2: Deploy your changes
+    <Info>
+      The default Unraid GraphQL API port is **3443**. If you've changed this in your Unraid settings, use your custom port.
+    </Info>
+  </Step>
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+  <Step title="Obtain your Unraid API key">
+    You need an API key from your Unraid server:
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+    1. Log into your Unraid Web UI
+    2. Go to **Settings** → **API Access**
+    3. Click **Generate Key** or use an existing key
+    4. Copy the API key
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+    <Warning>
+      Keep your API key secure! It provides access to control your Unraid server.
+    </Warning>
+  </Step>
 
-### Step 3: Go live
+  <Step title="Paste the API key">
+    Paste the API key into the setup form.
+  </Step>
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+  <Step title="Configure scopes (permissions)">
+    Select which permissions to grant:
 
-## Next steps
+    - **Read-only**: View system status, array info, containers, VMs, and shares
+    - **Write access**: Also control containers (start/stop/restart), VMs, and the array
 
-Now that you have your docs running, explore these key features:
+    <Tip>
+      Start with read-only access to explore safely. You can add write permissions later from the settings.
+    </Tip>
+  </Step>
+
+  <Step title="Optional: Trust self-signed certificates">
+    If your Unraid server uses a self-signed SSL certificate (default), enable **Trust Self-Signed Certificates**.
+
+    <Info>
+      This is required for most Unraid installations unless you've configured a valid SSL certificate.
+    </Info>
+  </Step>
+
+  <Step title="Test and save">
+    1. Click **Test Connection** to verify the setup
+    2. If successful, click **Save** to complete setup
+    3. The app will load your Unraid dashboard
+  </Step>
+</Steps>
+
+## Interface overview
+
+After setup, you'll see five main sections:
+
+### Dashboard
+
+The home screen displays:
+
+- **System usage**: CPU, memory, and uptime
+- **Array status**: Started/stopped, capacity, parity health
+- **Notifications**: Alerts, warnings, and info messages
+- **UPS status**: Battery backup information (if configured)
+- **Quick links**: Direct URLs to services running on your server
+
+### Storage
+
+View array and pool information:
+
+- **Array capacity**: Used, free, and total space
+- **Disk details**: Individual disk health and usage
+- **Pool information**: Cache and other pools with redundancy status
+- **Shares**: User shares with allocator settings
+
+### Docker
+
+Manage your Docker containers:
+
+- **Container list**: All containers with status indicators
+- **Search**: Filter containers by name
+- **Container actions**: Start, stop, or restart (with write access)
+- **Details**: View networks, ports, and Web UI links
+
+### VMs
+
+Control virtual machines:
+
+- **VM list**: All VMs with current state
+- **Search**: Filter VMs by name
+- **VM actions**: Start, stop, pause, resume, reboot, reset, force stop (with write access)
+- **Details**: View memory, vCPUs, and VM configuration
+
+### Settings
+
+Manage app settings and servers:
+
+- **Multi-server management**: Add, switch, and remove Unraid servers
+- **Server settings**: Rename servers, update API keys, change accent colors
+- **Theme mode**: Switch between light and dark themes
+- **Refresh interval**: Customize auto-refresh timing
+
+## Common use cases
+
+### Start your array
+
+<Steps>
+  <Step title="Navigate to Storage tab">
+    Tap the **Storage** icon in the bottom navigation.
+  </Step>
+
+  <Step title="Start the array">
+    If the array is stopped, you'll see a **Start Array** button at the top. Tap it and confirm.
+
+    <Note>
+      This requires write access permissions configured during setup.
+    </Note>
+  </Step>
+
+  <Step title="Monitor parity check">
+    If a parity check starts, you'll see progress in the array status section.
+  </Step>
+</Steps>
+
+### Control a Docker container
+
+<Steps>
+  <Step title="Go to Docker tab">
+    Tap the **Docker** icon in the bottom navigation.
+  </Step>
+
+  <Step title="Select a container">
+    Tap on any container to open its details dialog.
+  </Step>
+
+  <Step title="Perform action">
+    Use the **Start**, **Stop**, or **Restart** buttons. Confirm the action when prompted.
+  </Step>
+
+  <Step title="Access Web UI">
+    If the container has a web interface, tap **Open Web UI** to launch it in a new tab.
+  </Step>
+</Steps>
+
+### Archive notifications
+
+<Steps>
+  <Step title="View notifications">
+    Notifications appear on the Dashboard tab, grouped by severity (alerts, warnings, info).
+  </Step>
+
+  <Step title="Archive a notification">
+    Tap the **Archive** button next to any notification to mark it as read.
+
+    <Info>
+      Archived notifications are removed from the dashboard but remain in your Unraid notification history.
+    </Info>
+  </Step>
+</Steps>
+
+## Install as PWA (mobile)
+
+Unraid PWA can be installed as a Progressive Web App for a native app-like experience:
+
+### iOS (Safari)
+
+1. Open `http://<UNRAID-IP>:2442` in Safari
+2. Tap the **Share** button (square with arrow)
+3. Scroll down and tap **Add to Home Screen**
+4. Name the app (e.g., "Unraid") and tap **Add**
+
+### Android (Chrome)
+
+1. Open `http://<UNRAID-IP>:2442` in Chrome
+2. Tap the **⋮** menu in the top right
+3. Select **Install app** or **Add to Home Screen**
+4. Confirm the installation
+
+<Tip>
+  PWA installation enables offline access to the interface. Data won't update while offline, but the UI remains accessible.
+</Tip>
+
+## Security best practices
+
+<Warning>
+  Unraid PWA stores encrypted server credentials locally in your browser. Follow these practices to stay secure:
+</Warning>
+
+- **Use HTTPS in production**: If exposing the app outside your local network, run it behind a reverse proxy with SSL
+- **Limit write access**: Only grant write permissions to trusted devices
+- **Rotate API keys**: Periodically regenerate API keys in Unraid settings
+- **Review audit logs**: Check `backend/data/audit.log` for all write actions performed
+
+Example audit log entry:
+
+```json
+{"timestamp":"2024-03-02T12:34:56.789Z","action":"start","target":"container-id-abc123","result":"ok"}
+```
+
+## What's next?
 
 <CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+  <Card
+    title="Explore features"
+    icon="grid"
+    href="/features/dashboard"
+  >
+    Learn about all the features in detail
+  </Card>
+  <Card
+    title="Configure settings"
+    icon="gear"
+    href="/configuration"
+  >
+    Customize environment variables and security options
+  </Card>
+  <Card
+    title="Manage multiple servers"
+    icon="server"
+    href="/features/server-management"
+  >
+    Set up and switch between multiple Unraid servers
+  </Card>
+  <Card
+    title="API reference"
+    icon="code"
+    href="/api/overview"
+  >
+    Integrate with the REST API
+  </Card>
 </CardGroup>
-
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>

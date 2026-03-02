@@ -1,0 +1,248 @@
+---
+title: Docker Container Management
+description: Monitor and control Docker containers running on your Unraid server
+---
+
+The Docker tab provides a comprehensive interface for managing Docker containers, viewing container details, and executing control actions from your mobile device.
+
+## Accessing Docker Management
+
+Navigate to Docker management by:
+
+1. Tapping the **Docker** icon in the bottom navigation bar
+2. The header displays "Docker"
+3. The `DockerTab` component loads container data from `/api/docker`
+
+## Docker Overview
+
+The overview card displays summary statistics and search functionality:
+
+### Container Statistics
+
+- **Running** - Count of active containers
+- **Stopped** - Count of inactive containers
+- Total containers = running + stopped
+
+Statistics are displayed using icon rows:
+- `Activity` icon for running containers
+- `CircleX` icon for stopped containers
+
+### Container Search
+
+Filter containers by name:
+
+1. Tap the search input field
+2. Enter container name (partial matches supported)
+3. The container list updates in real-time
+4. Search value is managed via `dockerSearch` state
+5. Filtering logic in `filteredContainers` compares against container names
+
+<Info>
+Search is case-insensitive and matches partial container names. For example, "plex" will match "plex", "Plex", or "PlexServer".
+</Info>
+
+## Container List
+
+Containers are displayed as individual cards:
+
+### Container Card Display
+
+Each container card shows:
+
+- **Container icon** - Logo/icon displayed via `DockerLogo` component
+  - Uses container's configured icon URL if available
+  - Falls back to proxy icon via `dockerIconProxyUrl(container.id)`
+  - Endpoint: `/api/docker/:id/icon`
+- **Container name** - Display name
+- **Status pill** - Color-coded status indicator (running/stopped)
+- **Image name** - Docker image identifier
+- **Info button** - Opens detailed container dialog
+
+### Status Indicators
+
+The `StatusPill` component displays:
+- **Green** - Running containers
+- **Red/Gray** - Stopped containers
+- Text label matching the container's state
+
+## Container Details Dialog
+
+Tapping the info button (ℹ️) opens the `DockerDetailsDialog` with comprehensive container information:
+
+### Header Section
+
+- **Container logo** - Large icon display
+- **Container name** - Primary identifier
+- **Image name** - Docker image with tag
+- **Status pill** - Current state
+- **Close button** - X icon to dismiss dialog
+
+### Container Metadata
+
+Displayed in a grid layout:
+
+1. **State** - Detailed state label (running, stopped, paused, etc.)
+2. **Auto start** - Whether container starts with array (yes/no)
+3. **Created** - When the container was created
+4. **Network** - Network mode (bridge, host, custom, etc.)
+
+### Network Information
+
+- **Ports** - Port mappings (e.g., "8080:80, 8443:443")
+- **Web UI** - Access URL for container's web interface
+  - Displayed as clickable link when available
+  - Resolved via `resolveDockerWebUiUrl()` using:
+    - Container's endpoint configuration
+    - Active server's base URL
+  - Falls back to raw endpoint value if resolution fails
+
+### Container Actions
+
+Three control buttons are available:
+
+#### Start Container
+
+1. Tap **"Start"** button
+2. Confirmation dialog appears: "Do you want to start container [name]?"
+3. Confirm the action
+4. Calls `runContainerAction(containerId, 'start')`
+5. Executes via `POST /api/docker/:id/start`
+6. Container state updates on next refresh
+
+#### Stop Container
+
+1. Tap **"Stop"** button
+2. Confirmation dialog prompts for verification
+3. Confirm to proceed
+4. Calls `runContainerAction(containerId, 'stop')`
+5. Executes via `POST /api/docker/:id/stop`
+6. Container gracefully stops
+
+#### Restart Container
+
+1. Tap **"Restart"** button
+2. Confirmation dialog asks: "Do you want to restart container [name]?"
+3. Confirm the action
+4. Calls `runContainerAction(containerId, 'restart')`
+5. Executes via `POST /api/docker/:id/restart`
+6. Container stops and starts in sequence
+
+<Warning>
+Action buttons are disabled if your API key has read-only permissions. Ensure your API key includes write scopes to control containers.
+</Warning>
+
+### Permission Message
+
+When write controls are disabled:
+- All action buttons appear grayed out
+- Message displays: "Write controls disabled: current API scopes are read-only."
+- Navigate to Settings to check or update your API key scopes
+
+## Container Icons
+
+The PWA supports multiple icon sources:
+
+### Icon Resolution Priority
+
+1. **Container-configured icon** - Uses `container.iconUrl` if provided
+2. **Proxied icon** - Falls back to `/api/docker/:id/icon` endpoint
+   - Backend fetches icon from Unraid server
+   - Caches icon with 5-minute TTL
+   - Returns 404 if icon unavailable
+3. **Default fallback** - Generic Docker logo if all else fails
+
+The `DockerLogo` component handles this resolution automatically.
+
+## Dialog Interaction
+
+The Docker details dialog provides intuitive interaction:
+
+### Opening the Dialog
+
+1. Tap the info icon (ℹ️) on any container card
+2. Dialog slides up with backdrop
+3. Focus is trapped within the dialog
+4. Backdrop prevents interaction with background
+
+### Closing the Dialog
+
+- Tap the X button in the top-right corner
+- Tap the backdrop (outside the dialog)
+- Both actions call `onClose()` which sets `dockerInfoOpenId` to null
+
+### Accessibility
+
+The dialog includes:
+- `role="dialog"` for screen readers
+- `aria-modal="true"` to indicate modal behavior
+- `aria-label="Docker details"` for context
+- Proper focus management
+
+## Data Refresh
+
+Docker container data updates automatically:
+
+- Fetched from `/api/docker` endpoint via `fetchDocker()`
+- Refresh interval matches app settings (default: 5 seconds)
+- Updates include:
+  - Container status changes
+  - Running/stopped counts
+  - Container metadata
+
+## State Management
+
+The Docker tab uses several state variables:
+
+- `docker` - Full Docker data including containers and summary
+- `dockerSearch` - Current search filter text
+- `filteredContainers` - Computed list after search filtering
+- `dockerInfoOpenId` - ID of container with open details dialog
+- `selectedDocker` - Full container object for the open dialog
+
+## Action Confirmation Flow
+
+All container actions follow a confirmation pattern:
+
+1. User taps action button in details dialog
+2. `onRequestAction(action)` is called
+3. Parent sets `pendingAction` state with:
+   - `target: "docker"`
+   - `id: containerId`
+   - `action: "start" | "stop" | "restart"`
+4. `ConfirmDialog` component displays
+5. User confirms or cancels
+6. On confirm, `runAction()` executes the API call
+7. Toast message shows success/failure
+8. Dialog closes on completion
+
+## Audit Logging
+
+All container actions are logged:
+
+- Action type ("start", "stop", "restart")
+- Target container ID
+- Result ("ok" or "failed")
+- Timestamp
+- Written via `writeAuditLog()` on backend
+
+## Supported Docker Actions
+
+The PWA supports these container actions (defined in `DOCKER_ACTIONS`):
+
+- `start` - Start a stopped container
+- `stop` - Gracefully stop a running container
+- `restart` - Stop and start a container
+
+<Note>
+Advanced Docker operations (like updating, editing, or removing containers) must be performed through the Unraid web interface. The PWA focuses on essential monitoring and control functions.
+</Note>
+
+## Error Handling
+
+When container actions fail:
+
+- API returns 500 status with error detail
+- Toast message displays the error
+- Action is logged as "failed" in audit log
+- Container state remains unchanged
+- User can retry the operation

@@ -1,0 +1,201 @@
+---
+title: 'Docker Containers'
+description: 'Endpoints for managing Docker containers'
+---
+
+## Get Docker Containers
+
+<RequestExample>
+```bash cURL
+curl http://localhost:3000/api/docker
+```
+</RequestExample>
+
+Retrieves information about all Docker containers on the Unraid server.
+
+**Authentication:** Requires active server configuration
+
+<ResponseField name="summary" type="object">
+  Summary of container states.
+  <Expandable title="Summary object">
+    <ResponseField name="running" type="number">
+      Number of running containers.
+    </ResponseField>
+    <ResponseField name="stopped" type="number">
+      Number of stopped containers.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="containers" type="array">
+  Array of Docker containers.
+  <Expandable title="Container object">
+    <ResponseField name="id" type="string">
+      Unique container identifier.
+    </ResponseField>
+    <ResponseField name="name" type="string">
+      Container name.
+    </ResponseField>
+    <ResponseField name="image" type="string">
+      Docker image name.
+    </ResponseField>
+    <ResponseField name="iconUrl" type="string">
+      URL to container icon image.
+    </ResponseField>
+    <ResponseField name="network" type="string">
+      Network configuration.
+    </ResponseField>
+    <ResponseField name="endpoint" type="string">
+      Container web endpoint (if available).
+    </ResponseField>
+    <ResponseField name="ports" type="string">
+      Exposed ports configuration.
+    </ResponseField>
+    <ResponseField name="createdAt" type="string">
+      Container creation timestamp.
+    </ResponseField>
+    <ResponseField name="autoStart" type="boolean">
+      Whether container auto-starts.
+    </ResponseField>
+    <ResponseField name="stateLabel" type="string">
+      Human-readable state label.
+    </ResponseField>
+    <ResponseField name="status" type="string">
+      Current status: "running", "stopped", or "unknown".
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+**Error Responses:**
+- `500` - Docker fetch failed (server not configured or unreachable)
+
+---
+
+## Get Container Icon
+
+<RequestExample>
+```bash cURL
+curl http://localhost:3000/api/docker/{containerId}/icon
+```
+</RequestExample>
+
+Retrieves the icon image for a specific Docker container.
+
+**Authentication:** Requires active server configuration
+
+<ParamField path="id" type="string" required>
+  The container ID.
+</ParamField>
+
+**Success Response:**
+- Returns the image data with appropriate `Content-Type` header
+- Includes `Cache-Control: public, max-age=300` header (5 minute cache)
+
+**Error Responses:**
+- `404` - Icon not found or container doesn't exist
+
+---
+
+## Start Container
+
+<RequestExample>
+```bash cURL
+curl -X POST http://localhost:3000/api/docker/{containerId}/start \
+  -H "X-CSRF-Token: your-csrf-token" \
+  -H "Cookie: unpwa_csrf=your-csrf-token"
+```
+</RequestExample>
+
+Starts a Docker container.
+
+**Authentication:** Requires CSRF token and write permissions
+
+**Rate Limit:** 20 requests per minute per IP
+
+**Audit Log:** Creates audit log entry with action "start" and container ID
+
+<ParamField path="id" type="string" required>
+  The container ID to start.
+</ParamField>
+
+<ResponseField name="ok" type="boolean">
+  Indicates successful start command.
+</ResponseField>
+
+**Error Responses:**
+- `400` - Invalid container ID or unsupported action
+- `403` - CSRF validation failed or insufficient permissions
+- `429` - Rate limit exceeded
+- `500` - Container action failed
+
+---
+
+## Stop Container
+
+<RequestExample>
+```bash cURL
+curl -X POST http://localhost:3000/api/docker/{containerId}/stop \
+  -H "X-CSRF-Token: your-csrf-token" \
+  -H "Cookie: unpwa_csrf=your-csrf-token"
+```
+</RequestExample>
+
+Stops a Docker container.
+
+**Authentication:** Requires CSRF token and write permissions
+
+**Rate Limit:** 20 requests per minute per IP
+
+**Audit Log:** Creates audit log entry with action "stop" and container ID
+
+<ParamField path="id" type="string" required>
+  The container ID to stop.
+</ParamField>
+
+<ResponseField name="ok" type="boolean">
+  Indicates successful stop command.
+</ResponseField>
+
+**Error Responses:**
+- `400` - Invalid container ID or unsupported action
+- `403` - CSRF validation failed or insufficient permissions
+- `429` - Rate limit exceeded
+- `500` - Container action failed
+
+---
+
+## Restart Container
+
+<RequestExample>
+```bash cURL
+curl -X POST http://localhost:3000/api/docker/{containerId}/restart \
+  -H "X-CSRF-Token: your-csrf-token" \
+  -H "Cookie: unpwa_csrf=your-csrf-token"
+```
+</RequestExample>
+
+Restarts a Docker container.
+
+**Authentication:** Requires CSRF token and write permissions
+
+**Rate Limit:** 20 requests per minute per IP
+
+**Audit Log:** Creates audit log entry with action "restart" and container ID
+
+<ParamField path="id" type="string" required>
+  The container ID to restart.
+</ParamField>
+
+<ResponseField name="ok" type="boolean">
+  Indicates successful restart command.
+</ResponseField>
+
+**Error Responses:**
+- `400` - Invalid container ID or unsupported action
+- `403` - CSRF validation failed or insufficient permissions
+- `429` - Rate limit exceeded
+- `500` - Container action failed
+
+<Note>
+Supported actions for Docker containers are: **start**, **stop**, and **restart**.
+</Note>

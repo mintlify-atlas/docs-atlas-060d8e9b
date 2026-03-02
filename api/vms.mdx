@@ -1,0 +1,297 @@
+---
+title: 'Virtual Machines'
+description: 'Endpoints for managing virtual machines'
+---
+
+## Get Virtual Machines
+
+<RequestExample>
+```bash cURL
+curl http://localhost:3000/api/vms
+```
+</RequestExample>
+
+Retrieves information about all virtual machines on the Unraid server.
+
+**Authentication:** Requires active server configuration
+
+<ResponseField name="summary" type="object">
+  Summary of VM states.
+  <Expandable title="Summary object">
+    <ResponseField name="running" type="number">
+      Number of running VMs.
+    </ResponseField>
+    <ResponseField name="stopped" type="number">
+      Number of stopped VMs.
+    </ResponseField>
+    <ResponseField name="paused" type="number">
+      Number of paused VMs.
+    </ResponseField>
+    <ResponseField name="other" type="number">
+      Number of VMs in other states.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="vms" type="array">
+  Array of virtual machines.
+  <Expandable title="VM object">
+    <ResponseField name="id" type="string">
+      Unique VM identifier.
+    </ResponseField>
+    <ResponseField name="name" type="string">
+      VM name.
+    </ResponseField>
+    <ResponseField name="status" type="string">
+      Current status: "running", "stopped", or "unknown".
+    </ResponseField>
+    <ResponseField name="stateLabel" type="string">
+      Human-readable state label.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+**Error Responses:**
+- `500` - VM fetch failed (server not configured or unreachable)
+
+---
+
+## Start VM
+
+<RequestExample>
+```bash cURL
+curl -X POST http://localhost:3000/api/vms/{vmId}/start \
+  -H "X-CSRF-Token: your-csrf-token" \
+  -H "Cookie: unpwa_csrf=your-csrf-token"
+```
+</RequestExample>
+
+Starts a virtual machine.
+
+**Authentication:** Requires CSRF token and write permissions
+
+**Rate Limit:** 20 requests per minute per IP
+
+**Audit Log:** Creates audit log entry with action "vm:start" and VM ID
+
+<ParamField path="id" type="string" required>
+  The VM ID to start.
+</ParamField>
+
+<ResponseField name="ok" type="boolean">
+  Indicates successful start command.
+</ResponseField>
+
+**Error Responses:**
+- `400` - Invalid VM ID or unsupported action
+- `403` - CSRF validation failed or insufficient permissions
+- `429` - Rate limit exceeded
+- `500` - VM action failed
+
+---
+
+## Stop VM
+
+<RequestExample>
+```bash cURL
+curl -X POST http://localhost:3000/api/vms/{vmId}/stop \
+  -H "X-CSRF-Token: your-csrf-token" \
+  -H "Cookie: unpwa_csrf=your-csrf-token"
+```
+</RequestExample>
+
+Stops a virtual machine gracefully.
+
+**Authentication:** Requires CSRF token and write permissions
+
+**Rate Limit:** 20 requests per minute per IP
+
+**Audit Log:** Creates audit log entry with action "vm:stop" and VM ID
+
+<ParamField path="id" type="string" required>
+  The VM ID to stop.
+</ParamField>
+
+<ResponseField name="ok" type="boolean">
+  Indicates successful stop command.
+</ResponseField>
+
+**Error Responses:**
+- `400` - Invalid VM ID or unsupported action
+- `403` - CSRF validation failed or insufficient permissions
+- `429` - Rate limit exceeded
+- `500` - VM action failed
+
+---
+
+## Force Stop VM
+
+<RequestExample>
+```bash cURL
+curl -X POST http://localhost:3000/api/vms/{vmId}/forceStop \
+  -H "X-CSRF-Token: your-csrf-token" \
+  -H "Cookie: unpwa_csrf=your-csrf-token"
+```
+</RequestExample>
+
+Force stops a virtual machine immediately (equivalent to pulling the power plug).
+
+**Authentication:** Requires CSRF token and write permissions
+
+**Rate Limit:** 20 requests per minute per IP
+
+**Audit Log:** Creates audit log entry with action "vm:forceStop" and VM ID
+
+<ParamField path="id" type="string" required>
+  The VM ID to force stop.
+</ParamField>
+
+<ResponseField name="ok" type="boolean">
+  Indicates successful force stop command.
+</ResponseField>
+
+**Error Responses:**
+- `400` - Invalid VM ID or unsupported action
+- `403` - CSRF validation failed or insufficient permissions
+- `429` - Rate limit exceeded
+- `500` - VM action failed
+
+---
+
+## Pause VM
+
+<RequestExample>
+```bash cURL
+curl -X POST http://localhost:3000/api/vms/{vmId}/pause \
+  -H "X-CSRF-Token: your-csrf-token" \
+  -H "Cookie: unpwa_csrf=your-csrf-token"
+```
+</RequestExample>
+
+Pauses a running virtual machine.
+
+**Authentication:** Requires CSRF token and write permissions
+
+**Rate Limit:** 20 requests per minute per IP
+
+**Audit Log:** Creates audit log entry with action "vm:pause" and VM ID
+
+<ParamField path="id" type="string" required>
+  The VM ID to pause.
+</ParamField>
+
+<ResponseField name="ok" type="boolean">
+  Indicates successful pause command.
+</ResponseField>
+
+**Error Responses:**
+- `400` - Invalid VM ID or unsupported action
+- `403` - CSRF validation failed or insufficient permissions
+- `429` - Rate limit exceeded
+- `500` - VM action failed
+
+---
+
+## Resume VM
+
+<RequestExample>
+```bash cURL
+curl -X POST http://localhost:3000/api/vms/{vmId}/resume \
+  -H "X-CSRF-Token: your-csrf-token" \
+  -H "Cookie: unpwa_csrf=your-csrf-token"
+```
+</RequestExample>
+
+Resumes a paused virtual machine.
+
+**Authentication:** Requires CSRF token and write permissions
+
+**Rate Limit:** 20 requests per minute per IP
+
+**Audit Log:** Creates audit log entry with action "vm:resume" and VM ID
+
+<ParamField path="id" type="string" required>
+  The VM ID to resume.
+</ParamField>
+
+<ResponseField name="ok" type="boolean">
+  Indicates successful resume command.
+</ResponseField>
+
+**Error Responses:**
+- `400` - Invalid VM ID or unsupported action
+- `403` - CSRF validation failed or insufficient permissions
+- `429` - Rate limit exceeded
+- `500` - VM action failed
+
+---
+
+## Reboot VM
+
+<RequestExample>
+```bash cURL
+curl -X POST http://localhost:3000/api/vms/{vmId}/reboot \
+  -H "X-CSRF-Token: your-csrf-token" \
+  -H "Cookie: unpwa_csrf=your-csrf-token"
+```
+</RequestExample>
+
+Reboots a virtual machine gracefully.
+
+**Authentication:** Requires CSRF token and write permissions
+
+**Rate Limit:** 20 requests per minute per IP
+
+**Audit Log:** Creates audit log entry with action "vm:reboot" and VM ID
+
+<ParamField path="id" type="string" required>
+  The VM ID to reboot.
+</ParamField>
+
+<ResponseField name="ok" type="boolean">
+  Indicates successful reboot command.
+</ResponseField>
+
+**Error Responses:**
+- `400` - Invalid VM ID or unsupported action
+- `403` - CSRF validation failed or insufficient permissions
+- `429` - Rate limit exceeded
+- `500` - VM action failed
+
+---
+
+## Reset VM
+
+<RequestExample>
+```bash cURL
+curl -X POST http://localhost:3000/api/vms/{vmId}/reset \
+  -H "X-CSRF-Token: your-csrf-token" \
+  -H "Cookie: unpwa_csrf=your-csrf-token"
+```
+</RequestExample>
+
+Resets a virtual machine (hard reboot).
+
+**Authentication:** Requires CSRF token and write permissions
+
+**Rate Limit:** 20 requests per minute per IP
+
+**Audit Log:** Creates audit log entry with action "vm:reset" and VM ID
+
+<ParamField path="id" type="string" required>
+  The VM ID to reset.
+</ParamField>
+
+<ResponseField name="ok" type="boolean">
+  Indicates successful reset command.
+</ResponseField>
+
+**Error Responses:**
+- `400` - Invalid VM ID or unsupported action
+- `403` - CSRF validation failed or insufficient permissions
+- `429` - Rate limit exceeded
+- `500` - VM action failed
+
+<Note>
+Supported actions for VMs are: **start**, **stop**, **pause**, **resume**, **forceStop**, **reboot**, and **reset**.
+</Note>

@@ -1,0 +1,350 @@
+---
+title: Notification Management
+description: Stay informed about system alerts, warnings, and events with integrated notification handling
+---
+
+The Unraid PWA provides comprehensive notification management, allowing you to monitor system alerts, warnings, and informational messages directly from your mobile device.
+
+## Accessing Notifications
+
+Notifications are displayed on the **Dashboard (Overview tab)**:
+
+1. Navigate to the Overview tab (default view)
+2. Scroll to the **Notifications** card
+3. The card shows notification counts and recent alerts
+
+## Notification Summary
+
+The notifications section header displays:
+
+- **Total unread count** - Badge showing total unread notifications
+- Appears in the section header as a `BadgePill` component
+
+### Breakdown by Severity
+
+Three severity levels are tracked:
+
+#### Alerts (Critical)
+
+- **Icon:** `CircleX` (red X circle)
+- **Type:** "alert"
+- **Meaning:** Critical issues requiring immediate attention
+- **Examples:**
+  - Disk failures
+  - Array errors
+  - Security issues
+  - System crashes
+
+#### Warnings (Important)
+
+- **Icon:** `BellRing` (ringing bell)
+- **Type:** "warning"
+- **Meaning:** Important notices that may require action
+- **Examples:**
+  - High disk temperature
+  - Low disk space
+  - Update available
+  - Configuration issues
+
+#### Info (General)
+
+- **Icon:** `Bell` (standard bell)
+- **Type:** "info"
+- **Meaning:** General informational messages
+- **Examples:**
+  - Successful operations
+  - Status updates
+  - Routine maintenance completions
+
+### Summary Grid Display
+
+The notification counts are displayed in a grid with `IconRow` components:
+
+```
+┌─────────────┬──────────────┐
+│ ❌ Alerts: 2 │ ⚠️ Warnings: 5│
+├─────────────┴──────────────┤
+│ ℹ️ Info: 12                │
+└─────────────────────────────┘
+```
+
+## Notification List
+
+The **5 most recent notifications** are displayed below the summary:
+
+### Notification Item Display
+
+Each notification shows:
+
+#### Header Row
+
+- **Type icon** - Color-coded indicator:
+  - 🔴 `CircleX` for alerts (red)
+  - 🟡 `BellRing` for warnings (yellow/orange)
+  - 🔵 `Bell` for info (blue)
+- **Title** - Notification subject in bold
+- **Archive button** - 📁 icon to dismiss the notification
+
+#### Metadata
+
+- **Category** - Classification (e.g., "Array Management", "Disk Health")
+- **Date** - Formatted as localized date string (e.g., "12/15/2025")
+
+#### Content
+
+- **Snippet** - Brief description or preview of the notification
+- Paragraph text with full notification summary
+
+### Visual Structure
+
+```
+┌────────────────────────────────────────┐
+│ 🔴 Disk 1 Temperature Critical      📁 │
+│ Disk Health - 12/15/2025              │
+│                                        │
+│ Disk 1 has reached 60°C. Consider    │
+│ improving cooling.                     │
+└────────────────────────────────────────┘
+```
+
+## Archiving Notifications
+
+Users can dismiss notifications they've reviewed:
+
+### Archive Process
+
+1. **Locate notification** - Find the notification in the list
+2. **Tap archive button** - Press the 📁 icon
+3. **Confirmation** - Action executes immediately (no confirmation dialog)
+4. **API call** - Sends `POST /api/notifications/:id/archive`
+5. **Visual feedback** - Button shows loading state during archiving
+6. **Removal** - Notification disappears on next data refresh
+
+### Archive Button States
+
+- **Enabled** - White/gray icon, clickable
+- **Disabled (no write access)** - Grayed out, not clickable
+- **Loading** - Icon for currently-archiving notification
+  - Determined by `archivingNotificationId === notification.id`
+  - Prevents double-submission
+
+### Required Permissions
+
+Archiving requires write scopes:
+
+- If API key has read-only permissions, button is **disabled**
+- Check `canWriteControls` prop to verify access
+- Update API key scopes in Settings if needed
+
+<Warning>
+Archived notifications cannot be unarchived from the PWA. Ensure you've addressed the underlying issue before archiving critical alerts.
+</Warning>
+
+## Notification States
+
+### Normal State
+
+When notifications are available:
+- Summary shows counts by type
+- List displays up to 5 recent notifications
+- All interactive elements are functional
+
+### No Active Notifications
+
+When `notifications.length === 0` and `unreadNotifications.total === 0`:
+- Message displays: "No active warnings/alerts."
+- Summary still shows (with zero counts)
+- Empty state is clean and informative
+
+### Loading State
+
+When `notifications.length === 0` but `unreadNotifications.total > 0`:
+- Message displays: "Unread notifications exist, but details could not be loaded yet."
+- Indicates data is still being fetched
+- Summary shows counts without details
+
+## Notification Data Structure
+
+Each notification object contains:
+
+```typescript
+{
+  id: string,        // Unique notification identifier
+  type: "alert" | "warning" | "info",
+  title: string,     // Notification subject
+  category: string,  // Classification
+  date: string,      // ISO timestamp
+  snippet: string    // Brief description
+}
+```
+
+## Visual Indicators
+
+### Icon Colors
+
+Notification types use distinct colors:
+
+- **Alert** - Red circle X (`.notification-icon.alert`)
+- **Warning** - Orange/yellow bell ring (`.notification-icon.warning`)
+- **Info** - Blue bell (`.notification-icon.info`)
+
+### CSS Classes
+
+Notification components use these classes:
+
+- `.notification` - Wrapper for each notification item
+- `.notification-top` - Header row with title and archive
+- `.notification-title-wrap` - Icon and title container
+- `.notification-icon` - Icon element with type modifier
+- `.notification-archive` - Archive button styling
+
+## Data Flow
+
+### Fetching Notifications
+
+1. Frontend requests overview data via `fetchOverview()`
+2. Backend calls `GET /api/overview`
+3. Unraid server provides notification data
+4. Backend parses and formats notifications
+5. Response includes:
+   - `unreadNotifications` summary object
+   - `notifications` array (recent items)
+6. `OverviewTab` renders notification section
+
+### Archiving Flow
+
+1. User clicks archive button
+2. `onArchiveNotification(notificationId)` is called
+3. Frontend calls `archiveNotificationById()`:
+   - Sets `archivingNotificationId` to current ID
+   - Sends `POST /api/notifications/:id/archive`
+   - Backend calls `archiveNotification()` to Unraid API
+4. Backend logs action via `writeAuditLog()`:
+   - Action: "notification:archive"
+   - Target: notification ID
+   - Result: "ok" or "failed"
+5. On success:
+   - Response returns `{ ok: true }`
+   - Toast shows success message
+   - Next data refresh updates notification list
+6. On error:
+   - Error toast displays
+   - Notification remains in list
+   - User can retry
+
+## Auto-Refresh
+
+Notifications update automatically:
+
+- Refresh interval matches app settings (default: 5 seconds)
+- Full overview data is re-fetched
+- Notification counts update
+- New notifications appear automatically
+- Archived notifications disappear
+
+## Notification Limits
+
+### Display Limit
+
+Only **5 most recent notifications** are shown:
+
+- Implemented via `overview.notifications.slice(0, 5)`
+- Keeps mobile UI uncluttered
+- Most important/recent items prioritized
+- Full notification list available in Unraid web interface
+
+### API Response
+
+The backend may return more than 5 notifications:
+- Frontend applies the slice limit
+- Server determines sort order (typically newest first)
+- No pagination in current implementation
+
+## Best Practices
+
+### Regular Monitoring
+
+- Check notifications daily
+- Address alerts immediately
+- Investigate warnings promptly
+- Archive after resolving underlying issues
+
+### Alert vs Warning
+
+- **Alerts** - Drop what you're doing, investigate now
+- **Warnings** - Schedule time to investigate soon
+- **Info** - Review when convenient
+
+### Archive Discipline
+
+- Don't archive alerts until issue is resolved
+- Archive warnings after addressing
+- Archive info notifications after reading
+- Use web interface for historical notification review
+
+## Accessibility
+
+### Screen Reader Support
+
+Notification elements include:
+
+- `aria-label` on archive buttons: "Archive notification [title]"
+- Icon elements marked `aria-hidden` (decorative)
+- Semantic HTML structure
+- Proper heading hierarchy
+
+### Keyboard Navigation
+
+Archive buttons are:
+
+- Keyboard accessible via Tab
+- Activatable via Enter or Space
+- Properly focused with visible outline
+
+## Limitations
+
+### No Detail View
+
+- PWA shows notification snippet only
+- Full notification text requires web interface
+- No expand/collapse functionality
+- Keep snippets concise and informative
+
+### No Historical View
+
+- Cannot view archived notifications
+- Cannot search notification history
+- Cannot filter by type or date
+- Use Unraid web interface for historical data
+
+### No Notification Settings
+
+- Cannot configure notification rules
+- Cannot set notification thresholds
+- Cannot customize notification delivery
+- All configuration via Unraid web interface
+
+<Info>
+For comprehensive notification management, including history, settings, and detailed views, use the Unraid web interface at Settings > Notifications.
+</Info>
+
+## Error Handling
+
+### Archive Failures
+
+When archiving fails:
+
+- Error returned from `/api/notifications/:id/archive`
+- Toast message displays error detail
+- Notification remains visible
+- User can retry operation
+- Action logged as "failed" in audit log
+
+### Missing Notification Data
+
+When notification details can't be loaded:
+
+- Summary counts still display (from unread totals)
+- Placeholder message explains the situation
+- Data may appear on next refresh
+- Not considered a critical error

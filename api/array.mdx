@@ -1,0 +1,161 @@
+---
+title: 'Array Control'
+description: 'Endpoints for retrieving array data and controlling array state'
+---
+
+## Get Array Data
+
+<RequestExample>
+```bash cURL
+curl http://localhost:3000/api/array
+```
+</RequestExample>
+
+Retrieves detailed information about the Unraid array including capacity, parity status, and device details.
+
+**Authentication:** Requires active server configuration
+
+<ResponseField name="state" type="string">
+  Current array state (e.g., "Started", "Stopped").
+</ResponseField>
+
+<ResponseField name="capacity" type="object">
+  Array storage capacity information.
+  <Expandable title="Capacity object">
+    <ResponseField name="used" type="string">
+      Used storage (human-readable format, e.g., "5.2 TB").
+    </ResponseField>
+    <ResponseField name="free" type="string">
+      Free storage (human-readable format).
+    </ResponseField>
+    <ResponseField name="total" type="string">
+      Total storage capacity (human-readable format).
+    </ResponseField>
+    <ResponseField name="usagePercent" type="number">
+      Storage usage percentage (0-100).
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="parity" type="object">
+  Parity status and operation information.
+  <Expandable title="Parity object">
+    <ResponseField name="status" type="string">
+      Current parity status.
+    </ResponseField>
+    <ResponseField name="progress" type="number">
+      Parity operation progress percentage (0-100).
+    </ResponseField>
+    <ResponseField name="errors" type="number">
+      Number of parity errors detected.
+    </ResponseField>
+    <ResponseField name="running" type="boolean">
+      Whether a parity operation is currently running.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="devices" type="array">
+  Array of storage devices.
+  <Expandable title="Device object">
+    <ResponseField name="id" type="string">
+      Unique device identifier.
+    </ResponseField>
+    <ResponseField name="role" type="string">
+      Device role in the array (e.g., "disk1", "parity", "cache").
+    </ResponseField>
+    <ResponseField name="diskType" type="string">
+      Type of disk: "array" or "pool".
+    </ResponseField>
+    <ResponseField name="isParity" type="boolean">
+      Whether this is a parity disk.
+    </ResponseField>
+    <ResponseField name="pool" type="string">
+      Pool name (if device is part of a pool).
+    </ResponseField>
+    <ResponseField name="filesystem" type="string">
+      Filesystem type (e.g., "xfs", "btrfs").
+    </ResponseField>
+    <ResponseField name="temp" type="string">
+      Current device temperature.
+    </ResponseField>
+    <ResponseField name="size" type="string">
+      Total device size (human-readable format).
+    </ResponseField>
+    <ResponseField name="used" type="string">
+      Used space on device (human-readable format).
+    </ResponseField>
+    <ResponseField name="errors" type="number">
+      Number of errors on device.
+    </ResponseField>
+    <ResponseField name="free" type="string">
+      Free space on device (human-readable format).
+    </ResponseField>
+    <ResponseField name="usagePercent" type="number">
+      Device usage percentage (0-100).
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+**Error Responses:**
+- `500` - Array fetch failed (server not configured or unreachable)
+
+---
+
+## Start Array
+
+<RequestExample>
+```bash cURL
+curl -X POST http://localhost:3000/api/array/start \
+  -H "X-CSRF-Token: your-csrf-token" \
+  -H "Cookie: unpwa_csrf=your-csrf-token"
+```
+</RequestExample>
+
+Starts the Unraid array.
+
+**Authentication:** Requires CSRF token and write permissions
+
+**Rate Limit:** 20 requests per minute per IP
+
+**Audit Log:** Creates audit log entry with action "array:start"
+
+<ResponseField name="ok" type="boolean">
+  Indicates successful array start command.
+</ResponseField>
+
+**Error Responses:**
+- `400` - Unsupported action
+- `403` - CSRF validation failed or insufficient permissions
+- `429` - Rate limit exceeded
+- `500` - Array action failed
+
+---
+
+## Stop Array
+
+<RequestExample>
+```bash cURL
+curl -X POST http://localhost:3000/api/array/stop \
+  -H "X-CSRF-Token: your-csrf-token" \
+  -H "Cookie: unpwa_csrf=your-csrf-token"
+```
+</RequestExample>
+
+Stops the Unraid array.
+
+**Authentication:** Requires CSRF token and write permissions
+
+**Rate Limit:** 20 requests per minute per IP
+
+**Audit Log:** Creates audit log entry with action "array:stop"
+
+<ResponseField name="ok" type="boolean">
+  Indicates successful array stop command.
+</ResponseField>
+
+**Error Responses:**
+- `400` - Unsupported action
+- `403` - CSRF validation failed or insufficient permissions
+- `429` - Rate limit exceeded
+- `500` - Array action failed

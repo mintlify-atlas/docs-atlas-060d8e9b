@@ -1,0 +1,59 @@
+---
+title: 'Shares'
+description: 'Endpoint for retrieving share information'
+---
+
+## Get Shares
+
+<RequestExample>
+```bash cURL
+curl http://localhost:3000/api/shares
+```
+</RequestExample>
+
+Retrieves information about all user shares on the Unraid server.
+
+**Authentication:** Requires active server configuration
+
+<ResponseField name="shares" type="array">
+  Array of user shares.
+  <Expandable title="Share object">
+    <ResponseField name="id" type="string">
+      Unique share identifier.
+    </ResponseField>
+    <ResponseField name="name" type="string">
+      Share name.
+    </ResponseField>
+    <ResponseField name="allocator" type="string">
+      Allocation method for the share (e.g., "highwater", "most-free").
+    </ResponseField>
+    <ResponseField name="splitLevel" type="string">
+      Split level configuration for the share.
+    </ResponseField>
+    <ResponseField name="size" type="string">
+      Total share size (human-readable format, e.g., "2.5 TB").
+    </ResponseField>
+    <ResponseField name="used" type="string">
+      Used space on share (human-readable format).
+    </ResponseField>
+    <ResponseField name="free" type="string">
+      Free space on share (human-readable format).
+    </ResponseField>
+    <ResponseField name="cached" type="string">
+      Cached data size (human-readable format).
+    </ResponseField>
+    <ResponseField name="usagePercent" type="number">
+      Share usage percentage (0-100).
+    </ResponseField>
+    <ResponseField name="location" type="string">
+      Share storage location (e.g., "array", "cache").
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+**Error Responses:**
+- `500` - Shares fetch failed (server not configured or unreachable)
+
+<Note>
+Shares represent the user-configured network shares on your Unraid server. They can span multiple physical disks in the array and cache pools, appearing as unified storage locations.
+</Note>

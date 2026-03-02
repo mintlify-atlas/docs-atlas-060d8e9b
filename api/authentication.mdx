@@ -1,0 +1,250 @@
+---
+title: Authentication
+description: CSRF protection and authentication mechanisms
+---
+
+The Unraid PWA API uses CSRF (Cross-Site Request Forgery) protection for all state-changing operations. This prevents malicious websites from making unauthorized requests on behalf of authenticated users.
+
+## CSRF Protection
+
+CSRF protection uses the **Double Submit Cookie** pattern:
+
+1. The server sets a cookie containing a random token
+2. The client reads the cookie and includes it in a request header
+3. The server verifies that the cookie and header values match
+
+### How It Works
+
+#### 1. Obtaining the CSRF Token
+
+When you make any request to the API, the `ensureCsrfCookie` middleware automatically sets a CSRF cookie if one doesn't exist:
+
+From `backend/src/middleware/csrf.ts:7-19`:
+
+```typescript
+export function ensureCsrfCookie(req: Request, res: Response, next: NextFunction): void {
+  if (!req.cookies[cookieName]) {
+    const forwardedProto = req.header("x-forwarded-proto");
+    const isSecure = req.secure || forwardedProto === "https";
+    res.cookie(cookieName, crypto.randomUUID(), {
+      httpOnly: false,
+      sameSite: "lax",
+      secure: isSecure,
+      path: "/",
+    });
+  }
+  next();
+}
+```
+
+**Cookie Details:**
+
+- **Name**: `unpwa_csrf`
+- **Value**: Random UUID (v4)
+- **httpOnly**: `false` (must be readable by JavaScript)
+- **sameSite**: `lax` (prevents CSRF from external sites)
+- **secure**: Automatic (true for HTTPS, false for HTTP)
+- **path**: `/` (available to all routes)
+
+#### 2. Reading the Token
+
+Since the cookie has `httpOnly: false`, your frontend JavaScript can read it:
+
+```typescript
+function getCsrfToken(): string | null {
+  const cookie = document.cookie
+    .split('; ')
+    .find(row => row.startsWith('unpwa_csrf='));
+  
+  return cookie ? cookie.split('=')[1] : null;
+}
+```
+
+#### 3. Including the Token in Requests
+
+For all protected endpoints (POST, PUT, DELETE), include the token in the `X-CSRF-Token` header:
+
+```typescript
+const csrfToken = getCsrfToken();
+
+fetch('/api/servers', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'X-CSRF-Token': csrfToken,
+  },
+  body: JSON.stringify({ baseUrl, apiKey }),
+  credentials: 'include', // Important: send cookies
+});
+```
+
+#### 4. Server Validation
+
+The `requireCsrf` middleware validates the token:
+
+From `backend/src/middleware/csrf.ts:21-29`:
+
+```typescript
+export function requireCsrf(req: Request, res: Response, next: NextFunction): void {
+  const cookieToken = req.cookies[cookieName];
+  const headerToken = req.header(headerName);
+  if (!cookieToken || !headerToken || cookieToken !== headerToken) {
+    res.status(403).json({ error: "CSRF validation failed." });
+    return;
+  }
+  next();
+}
+```
+
+**Validation Steps:**
+
+1. Extract token from `unpwa_csrf` cookie
+2. Extract token from `X-CSRF-Token` header
+3. Verify both exist and match exactly
+4. Reject with `403 Forbidden` if validation fails
+
+## Protected Endpoints
+
+The following endpoints require CSRF validation:
+
+### Server Management
+
+- `POST /api/servers` - Add new server
+- `PUT /api/servers/:id` - Update server configuration
+- `DELETE /api/servers/:id` - Remove server
+- `POST /api/servers/:id/activate` - Switch active server
+- `POST /api/servers/:id/test-key` - Test API key validity
+
+### Resource Actions
+
+- `POST /api/docker/:id/:action` - Docker container actions (start, stop, restart)
+- `POST /api/vms/:id/:action` - VM actions (start, stop, pause, resume, etc.)
+- `POST /api/array/:action` - Array operations (start, stop)
+- `POST /api/notifications/:id/archive` - Archive notification
+
+### Settings
+
+- `PUT /api/settings/app` - Update application settings
+
+## Unprotected Endpoints
+
+These endpoints do not require CSRF tokens (read-only operations):
+
+- `GET /api/servers` - List all servers
+- `GET /api/servers/status` - Get active server status
+- `GET /api/overview` - Fetch server overview
+- `GET /api/array` - Get array information
+- `GET /api/docker` - List Docker containers
+- `GET /api/docker/:id/icon` - Get container icon
+- `GET /api/vms` - List virtual machines
+- `GET /api/shares` - List shares
+- `GET /api/settings/app` - Get app settings
+- `POST /api/servers/test` - Test server connection (pre-auth)
+- `GET /health` - Health check
+
+## Error Responses
+
+### Missing or Invalid CSRF Token
+
+```http
+HTTP/1.1 403 Forbidden
+Content-Type: application/json
+
+{
+  "error": "CSRF validation failed."
+}
+```
+
+Common causes:
+
+- Cookie not sent with request (missing `credentials: 'include'`)
+- Header not included or has wrong name
+- Token mismatch (cookie and header don't match)
+- Cookie expired or manually deleted
+
+### Rate Limit Exceeded
+
+```http
+HTTP/1.1 429 Too Many Requests
+Content-Type: application/json
+
+{
+  "error": "Write rate limit exceeded."
+}
+```
+
+This occurs when you exceed 20 write requests per minute from the same IP address.
+
+## Implementation Example
+
+Complete example of making a protected API request:
+
+```typescript
+class UnraidAPI {
+  private getCsrfToken(): string | null {
+    const cookie = document.cookie
+      .split('; ')
+      .find(row => row.startsWith('unpwa_csrf='));
+    return cookie ? cookie.split('=')[1] : null;
+  }
+
+  async addServer(config: ServerConfig): Promise<AddServerResponse> {
+    const csrfToken = this.getCsrfToken();
+    
+    if (!csrfToken) {
+      throw new Error('CSRF token not available. Make a GET request first.');
+    }
+
+    const response = await fetch('/api/servers', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': csrfToken,
+      },
+      credentials: 'include', // Critical: send cookies
+      body: JSON.stringify(config),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error);
+    }
+
+    return response.json();
+  }
+}
+```
+
+## Security Considerations
+
+### Why Double Submit Cookie?
+
+The Double Submit Cookie pattern protects against CSRF because:
+
+1. **SameSite Protection**: The cookie uses `sameSite: lax`, preventing it from being sent in cross-origin POST requests
+2. **JavaScript Access**: Malicious sites cannot read cookies from other domains due to Same-Origin Policy
+3. **No State Required**: The server doesn't need to store tokens, improving scalability
+
+### Why httpOnly: false?
+
+The CSRF cookie is explicitly set to `httpOnly: false` because:
+
+- The frontend JavaScript must read the cookie value
+- The token itself is not a secret—it's a random value used only for validation
+- The actual protection comes from the Same-Origin Policy preventing external sites from reading it
+
+### HTTPS Considerations
+
+When running over HTTPS:
+
+- The cookie `secure` flag is automatically set to `true`
+- Cookies will only be sent over encrypted connections
+- The BFF detects HTTPS via `req.secure` or `X-Forwarded-Proto` header
+
+### Credential Storage
+
+The BFF never exposes Unraid server credentials to the frontend:
+
+- API keys are stored in the system keyring via the secret store
+- The frontend only receives server metadata (name, URL, scopes)
+- All Unraid API requests are proxied through the BFF with server-side credential injection

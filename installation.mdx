@@ -1,0 +1,281 @@
+---
+title: Installation
+description: Install Unraid PWA on your server using Docker Compose
+---
+
+# Installation
+
+Unraid PWA runs as a containerized application using Docker Compose. This guide covers both installation methods: using the pre-built image (recommended) or building from source.
+
+<Info>
+  **Not yet in Community Applications**: Unraid PWA is currently installed manually via Docker Compose. Community Applications support is planned for a future release.
+</Info>
+
+## Prerequisites
+
+Before installing, verify you have:
+
+- Unraid 6.12 or later with GraphQL API support
+- SSH access to your Unraid server terminal
+- Git installed on your Unraid server
+- Docker and Docker Compose available
+
+## Method 1: Pre-built Image (Recommended)
+
+The fastest way to get started is using the official pre-built Docker image from GitHub Container Registry.
+
+<Steps>
+  <Step title="Connect to your Unraid server">
+    Open a terminal and SSH into your Unraid server:
+
+    ```bash
+    ssh root@<UNRAID-IP>
+    ```
+  </Step>
+
+  <Step title="Clone the repository">
+    Navigate to the appdata directory and clone the repository:
+
+    ```bash
+    cd /mnt/user/appdata
+    git clone https://github.com/laurensguijt/Unraid-PWA.git
+    cd Unraid-PWA
+    ```
+  </Step>
+
+  <Step title="Configure environment variables (optional)">
+    Copy the example environment file and customize if needed:
+
+    ```bash
+    cp .env.example .env
+    nano .env
+    ```
+
+    <Note>
+      The default configuration works out of the box. Only customize if you need specific CORS origins or port changes.
+    </Note>
+
+    Available variables:
+    ```bash .env
+    UNRAID_BFF_PORT=3001
+    UNRAID_BFF_ORIGIN=http://localhost:5173,http://localhost:2442
+    UNRAID_BFF_ENCRYPTION_KEY=
+    UNRAID_BFF_ALLOW_SELF_SIGNED=true
+    UNRAID_BFF_TRUST_PROXY=false
+    ```
+
+    See [Configuration](/configuration) for detailed explanations of each variable.
+  </Step>
+
+  <Step title="Start the container">
+    Launch Unraid PWA using Docker Compose:
+
+    ```bash
+    docker compose up -d
+    ```
+
+    The `-d` flag runs the container in detached mode (background).
+  </Step>
+
+  <Step title="Verify the installation">
+    Check that the container is running:
+
+    ```bash
+    docker compose ps
+    ```
+
+    You should see output similar to:
+    ```
+    NAME                IMAGE                                      STATUS
+    unraid-pwa          ghcr.io/laurensguijt/unraid-pwa:latest    Up 30 seconds (healthy)
+    ```
+
+    <Tip>
+      The container includes a health check that runs every 15 seconds. Wait a few moments for the status to show as "healthy".
+    </Tip>
+  </Step>
+
+  <Step title="Access the web interface">
+    Open your browser and navigate to:
+
+    ```
+    http://<UNRAID-IP>:2442
+    ```
+
+    You should see the Unraid PWA welcome screen.
+  </Step>
+</Steps>
+
+## Method 2: Build From Source
+
+If you prefer to build the Docker image locally or need to make custom modifications:
+
+<Steps>
+  <Step title="Clone and navigate">
+    ```bash
+    cd /mnt/user/appdata
+    git clone https://github.com/laurensguijt/Unraid-PWA.git
+    cd Unraid-PWA
+    ```
+  </Step>
+
+  <Step title="Configure environment (optional)">
+    ```bash
+    cp .env.example .env
+    nano .env
+    ```
+  </Step>
+
+  <Step title="Build and start">
+    Build the Docker image and start the container:
+
+    ```bash
+    docker compose up -d --build
+    ```
+
+    <Warning>
+      Building from source takes several minutes as it compiles both the frontend and backend. The pre-built image is significantly faster.
+    </Warning>
+  </Step>
+
+  <Step title="Verify the build">
+    Check the container status:
+
+    ```bash
+    docker compose ps
+    ```
+  </Step>
+</Steps>
+
+## Docker Compose Configuration
+
+The included `docker-compose.yml` uses the following configuration:
+
+```yaml docker-compose.yml
+services:
+  app:
+    image: ghcr.io/laurensguijt/unraid-pwa:latest
+    container_name: unraid-pwa
+    environment:
+      UNRAID_BFF_PORT: ${UNRAID_BFF_PORT:-3001}
+      UNRAID_BFF_ORIGIN: ${UNRAID_BFF_ORIGIN:-http://localhost:5173,http://localhost:2442}
+      UNRAID_BFF_ALLOW_SELF_SIGNED: ${UNRAID_BFF_ALLOW_SELF_SIGNED:-true}
+      UNRAID_BFF_TRUST_PROXY: ${UNRAID_BFF_TRUST_PROXY:-false}
+      UNRAID_BFF_ENCRYPTION_KEY: ${UNRAID_BFF_ENCRYPTION_KEY:-}
+    ports:
+      - "2442:3001"
+    volumes:
+      - ./backend/data:/app/data
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3001/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+```
+
+<Info>
+  **Port Mapping**: The container exposes port 3001 internally, which is mapped to host port 2442. This means you access the app at port 2442 even though the internal service runs on 3001.
+</Info>
+
+## Data Persistence
+
+Unraid PWA stores persistent data in the `backend/data` directory, which is mounted as a Docker volume:
+
+- **`servers.enc`**: Encrypted server credentials (AES-256-GCM)
+- **`encryption.key`**: Auto-generated encryption key (unless overridden in `.env`)
+- **`audit.log`**: Audit log of all write operations
+
+<Warning>
+  **Backup Important**: Always back up the `backend/data` folder before updating or reinstalling. Losing `encryption.key` means you'll lose access to your stored server credentials.
+</Warning>
+
+## Health Check
+
+The container includes a built-in health check that queries the `/health` endpoint:
+
+```typescript backend/src/index.ts
+app.get("/health", (_req, res) => {
+  res.json({ ok: true, service: "unraid-pwa-bff" });
+});
+```
+
+You can manually check the health endpoint:
+
+```bash
+curl http://<UNRAID-IP>:2442/health
+```
+
+Expected response:
+```json
+{
+  "ok": true,
+  "service": "unraid-pwa-bff"
+}
+```
+
+## Troubleshooting Installation
+
+### Container fails to start
+
+1. Check Docker logs:
+   ```bash
+   docker compose logs
+   ```
+
+2. Verify port 2442 is not already in use:
+   ```bash
+   netstat -tulpn | grep 2442
+   ```
+
+3. Ensure the `backend/data` directory has correct permissions:
+   ```bash
+   ls -la backend/data
+   ```
+
+### Health check fails
+
+If the container shows as "unhealthy":
+
+1. Check if the internal service is responding:
+   ```bash
+   docker exec unraid-pwa node -e "fetch('http://localhost:3001/health').then(r=>console.log(r.status))"
+   ```
+
+2. Review container logs for startup errors:
+   ```bash
+   docker compose logs --tail=50
+   ```
+
+### Cannot access web interface
+
+1. Verify the container is running:
+   ```bash
+   docker compose ps
+   ```
+
+2. Check firewall rules allow access to port 2442
+
+3. Try accessing from the Unraid server itself:
+   ```bash
+   curl http://localhost:2442
+   ```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Quick Start Guide"
+    icon="rocket"
+    href="/quickstart"
+  >
+    Complete the initial setup and connect your first Unraid server
+  </Card>
+  <Card
+    title="Configuration"
+    icon="gear"
+    href="/configuration"
+  >
+    Learn about environment variables and advanced configuration options
+  </Card>
+</CardGroup>

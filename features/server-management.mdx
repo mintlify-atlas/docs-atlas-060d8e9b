@@ -1,0 +1,198 @@
+---
+title: Multi-Server Management
+description: Connect to and switch between multiple Unraid servers from a single PWA interface
+---
+
+The Unraid PWA supports managing multiple Unraid servers simultaneously, allowing you to switch between servers and configure individual connection settings for each.
+
+## Adding Your First Server
+
+When you first launch the PWA, you'll see the **First run setup** screen:
+
+### Setup Process
+
+1. **Server Name** - Enter a friendly name for your server (optional)
+   - If left blank, the PWA will attempt to resolve the hostname automatically using `resolveServerName()`
+   - The name appears in the server switcher and header
+
+2. **Server URL** - Enter your Unraid server's base URL
+   - Must be a valid `http://` or `https://` URL
+   - Example: `https://tower.local` or `http://192.168.1.100`
+   - The URL is normalized via `normalizeBaseUrl()` to ensure proper formatting
+
+3. **API Key** - Paste your Unraid API key
+   - Generated from your Unraid server's settings
+   - Determines access permissions (read-only or read/write)
+   - Required scopes are validated during connection testing
+
+4. **Trust Self-Signed Certificates** - Enable if using HTTPS with a self-signed certificate
+   - Required for local HTTPS connections without a trusted CA
+   - Checkbox option in the setup form
+
+5. **Test Connection** - Tap to verify connectivity
+   - Calls `testConnection()` via `/api/servers/test`
+   - Validates API key scopes against required permissions
+   - Shows missing scopes if API key lacks necessary permissions
+   - Displays management access URL for scope configuration
+
+6. **Save** - Completes setup and activates the server
+   - Creates server record via `saveServer()`
+   - Automatically sets as active server using `setActiveServer()`
+   - Stores credentials securely in the backend secret store
+
+## Adding Additional Servers
+
+After initial setup, you can add more servers:
+
+1. Open **Settings** (gear icon in the header)
+2. Scroll to the bottom of the settings panel
+3. Tap **"Add server"**
+4. The same setup form appears with the title **"Add server"**
+5. You can cancel the operation to return to settings
+
+## Server Switcher
+
+When you have multiple servers configured, a server switcher appears in the header:
+
+### Using the Server Switcher
+
+1. The current server is indicated by:
+   - Server name displayed in the switcher button
+   - Colored dot matching the server's accent color
+   - Chevron icon indicating the dropdown
+
+2. **Opening the switcher:**
+   - Tap the server name/dot in the header
+   - A dropdown menu appears via React portal (`createPortal`)
+   - The menu displays all configured servers
+
+3. **Switching servers:**
+   - Tap any server in the list
+   - The active server is marked with a checkmark icon
+   - Selection calls `activateServer()` which:
+     - Updates the active server ID
+     - Reloads all data for the new server
+     - Updates the UI to reflect the new server's state
+
+4. **Visual indicators:**
+   - Each server has a colored dot (customizable accent color)
+   - Active server shows a check mark
+   - Server names are displayed in full
+
+<Note>
+The server switcher only appears when you have 2 or more servers configured. With a single server, the header shows just the server name.
+</Note>
+
+## Server Settings
+
+Manage individual server configurations in the Settings dialog:
+
+### Per-Server Settings
+
+For each server, you can:
+
+1. **Rename Server**
+   - Tap the server name to enter edit mode
+   - Input field appears with current name
+   - Leave blank to auto-resolve from hostname
+   - Tap save checkmark to confirm
+   - Calls `renameServerById()` to update the name
+
+2. **Update API Key**
+   - Expand the server settings section
+   - Paste new API key in the input field
+   - Tap save to update
+   - The key is tested before saving via `/api/servers/:id/test-key`
+   - Calls `replaceServerApiKey()` to store the new key
+
+3. **Change Accent Color**
+   - Select from predefined color options
+   - The color appears in:
+     - Server switcher dot
+     - Visual accents throughout the UI
+   - Updates via `setServerAccentColor()`
+
+4. **Toggle Self-Signed Certificate Trust**
+   - Enable/disable certificate trust per server
+   - Useful when some servers use HTTPS and others don't
+   - Updates via `setServerTrustSelfSigned()`
+
+5. **Remove Server**
+   - Tap the remove/delete button
+   - Confirms deletion
+   - Calls `removeServer()` which:
+     - Deletes the server record
+     - If it was the active server, switches to another
+     - Updates the UI immediately
+
+### Server List Display
+
+In settings, servers are displayed with:
+
+- Server name (editable)
+- Base URL (read-only)
+- Active indicator (if currently selected)
+- Accent color preview
+- Trust self-signed certificate toggle
+- Created date
+- Available scopes
+
+## Active Server Indicator
+
+The currently active server is indicated by:
+
+- **Header display** - server name shown in header on Overview tab
+- **Online/Offline status** - connection state displayed below name
+- **Accent color** - applied to UI elements and switcher dot
+- **Checkmark** - in the server switcher dropdown
+
+## Server Activation Flow
+
+When switching servers via `activateServer()`:
+
+1. The selected server ID is stored as active
+2. Server credentials are loaded from the secret store
+3. All data endpoints are refreshed:
+   - Overview data
+   - Array status
+   - Docker containers
+   - Virtual machines
+   - Shares
+4. The UI updates to reflect the new server's state
+5. Theme accent color changes to the new server's color
+
+## API Endpoints
+
+Server management uses these backend routes:
+
+- `POST /api/servers/test` - Test connection before saving
+- `POST /api/servers` - Create new server
+- `GET /api/servers` - List all servers and get active server ID
+- `PUT /api/servers/:id` - Update server settings
+- `POST /api/servers/:id/test-key` - Test a new API key
+- `POST /api/servers/:id/activate` - Set server as active
+- `DELETE /api/servers/:id` - Remove server
+- `GET /api/servers/status` - Get active server status
+
+## Permissions and Scopes
+
+Each server's API key determines available functionality:
+
+- **Read scopes** - View data and status
+- **Write scopes** - Execute control commands
+- Missing scopes are displayed during connection testing
+- The `canWriteControls` flag disables action buttons when write access is unavailable
+
+<Warning>
+API keys are stored securely on the backend. Never share your API keys or include them in screenshots.
+</Warning>
+
+## Offline Server Handling
+
+When a server becomes unreachable:
+
+- The header displays "offline" status
+- Last known data may still be visible
+- Control buttons are automatically disabled
+- You can switch to another server while one is offline
+- Connection attempts continue in the background

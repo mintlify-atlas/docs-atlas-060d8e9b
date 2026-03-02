@@ -1,0 +1,152 @@
+---
+title: Dashboard Overview
+description: Monitor your Unraid server's health, performance, and system status at a glance
+---
+
+The Dashboard (Overview tab) provides a comprehensive view of your Unraid server's current status, system metrics, and active notifications. This is your central hub for monitoring server health and performance.
+
+## Accessing the Dashboard
+
+The Dashboard is the default view when you open the Unraid PWA. You can return to it at any time by:
+
+1. Tapping the **Overview** tab in the bottom navigation bar
+2. The header will display your server name when on the Dashboard
+3. An online/offline status indicator appears below the server name
+
+## System Usage Monitoring
+
+The Dashboard displays real-time resource utilization through the `OverviewTab` component:
+
+### CPU Metrics
+
+- **CPU usage percentage** with visual progress bar
+- CPU model name and specifications
+- Core count and thread count
+- Current CPU speed in GHz
+
+The CPU section uses `IconRow` components with the `Cpu` icon to display processor information clearly.
+
+### Memory Metrics
+
+- **Memory usage percentage** with visual progress bar
+- Used vs. total memory (application memory)
+- Available memory breakdown
+- Cache and free memory statistics
+
+Memory information is presented using the `MemoryStick` icon for quick visual recognition.
+
+## Array Health Status
+
+Monitor your storage array's health and capacity:
+
+- **Array state** (Started, Stopped, etc.)
+- **Used space** - currently allocated storage
+- **Free space** - available storage capacity
+- **Total capacity** - combined array size
+- **Usage percentage** with progress bar visualization
+
+All array metrics are displayed using dedicated icons (`HardDrive`, `Gauge`, `CircleX`, `LayoutGrid`) for easy scanning.
+
+## Parity Information
+
+Track parity check status and history:
+
+### Current Parity Status
+
+- Parity check state (Completed, Running, etc.)
+- Error count for completed checks
+- Real-time progress percentage (when running)
+- Current check speed
+
+### Last Parity Check Details
+
+- **Last run date** - displayed as relative time (e.g., "3 days ago")
+- **Duration** - how long the check took
+- **Speed** - average throughput during the check
+
+The system uses `formatRelativeDaysAgo()` to present dates in a user-friendly format.
+
+## System Information
+
+View essential server details:
+
+- **Hostname** - network identifier
+- **Uptime** - how long the server has been running
+- **Motherboard** - hardware platform
+- **Unraid version** - OS distribution, license type, and version number formatted via `formatUnraidLine()`
+- **Kernel version** - Linux kernel information
+
+## UPS / Battery Backup
+
+If UPS devices are configured, the Dashboard displays detailed battery backup information:
+
+### Per-Device Monitoring
+
+- Device model and name
+- **Status** - Online/Offline with color-coded status pill
+- **Battery level** - charge percentage
+- **Runtime estimate** - time remaining on battery (formatted via `formatUpsRuntime()`)
+- **Battery health** - overall condition
+- **Load percentage** - current power draw with progress bar
+- **Input voltage** - incoming AC voltage
+- **Output voltage** - voltage supplied to equipment
+
+A badge pill shows the total number of UPS devices detected.
+
+## Notifications Management
+
+Stay informed about system events and alerts:
+
+### Notification Summary
+
+- **Total unread count** displayed in a badge
+- Breakdown by severity:
+  - **Alerts** (critical issues)
+  - **Warnings** (important notices)
+  - **Info** (general information)
+
+### Notification List
+
+The 5 most recent notifications are displayed with:
+
+- **Type indicator** - color-coded icon (CircleX for alerts, BellRing for warnings, Bell for info)
+- **Title** - notification subject
+- **Category** - notification classification
+- **Date** - when the notification was generated
+- **Snippet** - brief description
+- **Archive button** - dismiss the notification (requires write permissions)
+
+### Archiving Notifications
+
+To archive a notification:
+
+1. Tap the archive icon (📁) next to the notification
+2. The notification will be removed from the active list
+3. The archive action calls `archiveNotificationById()` via the API endpoint `/notifications/:id/archive`
+
+<Note>
+Write controls must be enabled in your API key settings to archive notifications. The archive button will be disabled if you only have read-only access.
+</Note>
+
+## Network Access URLs
+
+View configured network access points:
+
+- **Access type** - connection method
+- **Name** - identifier or interface name
+- **URLs** - IPv4 and IPv6 addresses (clickable links)
+
+Up to 8 access URLs are displayed, with duplicate URLs automatically filtered. The `UrlValue` component renders URLs as interactive links.
+
+## Offline Mode
+
+When the server is unreachable:
+
+- The status indicator shows **"offline"** in the header
+- The indicator dot changes to reflect disconnected state
+- Cached data may still be displayed
+- Write operations will be disabled
+
+## Data Refresh
+
+The Dashboard automatically refreshes data at the interval configured in your app settings (default: 5 seconds). The `fetchOverview()` function retrieves all dashboard data from the `/api/overview` endpoint.

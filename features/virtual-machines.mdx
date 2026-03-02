@@ -1,0 +1,320 @@
+---
+title: Virtual Machine Control
+description: Monitor and control virtual machines running on your Unraid server
+---
+
+The VMs tab provides comprehensive control over virtual machines, including status monitoring, state management, and advanced VM operations.
+
+## Accessing VM Management
+
+Navigate to virtual machine control by:
+
+1. Tapping the **VMs** icon in the bottom navigation bar
+2. The header displays "VM"
+3. The `VmsTab` component loads VM data from `/api/vms`
+
+## VM Overview
+
+The overview card displays summary statistics and search functionality:
+
+### VM Statistics
+
+Four status categories are tracked:
+
+- **Running** - VMs currently active
+- **Stopped** - VMs that are shut down
+- **Paused** - VMs in suspended state
+- **Other** - VMs in transitional or unknown states
+
+Statistics are displayed in a grid layout with icons:
+- `Activity` for running VMs
+- `CircleX` for stopped VMs
+- `Monitor` for paused VMs
+- `LayoutGrid` for other states
+
+### VM Search
+
+Filter VMs by name:
+
+1. Tap the search input field (placeholder: "Search VMs...")
+2. Enter VM name or partial match
+3. The VM list updates in real-time via `filteredVms`
+4. Search is case-insensitive
+5. State managed through `vmSearch` variable
+
+## VM List
+
+The VMs card displays all virtual machines:
+
+### VM List Display
+
+- **Badge** - Shows total count of filtered VMs
+- **VM items** - Each VM appears as a list item
+
+For each VM:
+
+- **VM name** - Display name in bold
+- **Status pill** - Color-coded state indicator
+- **Info button** - Opens detailed VM dialog (ℹ️ icon)
+
+### VM Item Interaction
+
+Tapping the info button:
+1. Calls `onOpenVmInfo(vm.id)`
+2. Sets `vmInfoOpenId` state
+3. Opens `VmDetailsDialog` component
+4. Displays full VM details and controls
+
+## VM Details Dialog
+
+The `VmDetailsDialog` provides comprehensive VM information and controls:
+
+### Header Section
+
+- **VM name** - Primary identifier
+- **VM ID** - Unique identifier (truncated if >36 characters)
+  - Format: `{first 18 chars}...{last 12 chars}` for long IDs
+  - Full ID available in tooltip on hover
+- **Status pill** - Current VM state
+- **Close button** - X icon to dismiss dialog
+
+### VM State Labels
+
+The `stateLabel` provides detailed state information:
+- "running" - VM is active
+- "shut off" - VM is stopped
+- "paused" - VM is suspended
+- "pmsuspended" - VM in power management suspend
+- "in shutdown" - VM is shutting down
+- Other transitional states as reported by libvirt
+
+## VM Actions
+
+Available actions depend on the current VM state via `vmActionsForState()`:
+
+### Start VM
+
+**Available when:** VM is stopped
+
+1. Tap **"Start"** button
+2. Confirmation: "Do you want to start VM [id]?"
+3. Confirm the action
+4. Executes `POST /api/vms/:id/start`
+5. VM boots and transitions to running state
+
+### Stop VM
+
+**Available when:** VM is running
+
+1. Tap **"Stop"** button (graceful shutdown)
+2. Confirmation dialog appears
+3. Confirm to proceed
+4. Executes `POST /api/vms/:id/stop`
+5. Sends ACPI shutdown signal to guest OS
+6. VM shuts down gracefully
+
+### Pause VM
+
+**Available when:** VM is running
+
+1. Tap **"Pause"** button
+2. Confirmation required
+3. Executes `POST /api/vms/:id/pause`
+4. VM state is suspended (memory frozen)
+5. CPU/disk I/O halted
+
+### Resume VM
+
+**Available when:** VM is paused
+
+1. Tap **"Resume"** button
+2. Confirmation dialog
+3. Executes `POST /api/vms/:id/resume`
+4. VM continues from paused state
+5. Returns to running state
+
+### Force Stop VM
+
+**Available when:** VM is running (secondary action)
+
+1. Button appears with "secondary" styling (less prominent)
+2. Tap **"Force Stop"** (labeled via `vmActionLabel()`)
+3. Confirmation: "Do you want to forceStop VM [id]?"
+4. Executes `POST /api/vms/:id/forceStop`
+5. Immediately terminates VM (equivalent to power off)
+
+<Warning>
+Force Stop does not allow the guest OS to shut down gracefully. Use only when the VM is unresponsive or normal stop fails.
+</Warning>
+
+### Reboot VM
+
+**Available when:** VM is running
+
+1. Tap **"Reboot"** button
+2. Confirmation required
+3. Executes `POST /api/vms/:id/reboot`
+4. Sends ACPI reboot signal
+5. Guest OS reboots gracefully
+
+### Reset VM
+
+**Available when:** VM is running (secondary action)
+
+1. Button appears with "secondary" styling
+2. Tap **"Reset"** (labeled via `vmActionLabel()`)
+3. Confirmation dialog
+4. Executes `POST /api/vms/:id/reset`
+5. Hard reset of VM (equivalent to reset button)
+
+<Warning>
+Reset performs a hard reboot without graceful shutdown. Use only when the VM is frozen or unresponsive.
+</Warning>
+
+## Action Button Styling
+
+Buttons are styled based on action severity:
+
+- **Primary buttons** - Default styling for normal actions
+  - Start, Stop, Pause, Resume, Reboot
+- **Secondary buttons** - Muted styling for destructive actions
+  - Force Stop, Reset
+  - Indicated by `className="secondary"`
+  - Visually de-emphasized to prevent accidental use
+
+## Write Permission Requirements
+
+VM control requires write scopes:
+
+- All action buttons check `canWriteControls` prop
+- Disabled when API key has read-only permissions
+- Permission message displays when controls are disabled:
+  - "Write controls disabled: current API scopes are read-only."
+- Check Settings to verify or update API key scopes
+
+## VM Action Confirmation Flow
+
+All VM actions follow a secure confirmation pattern:
+
+1. User taps action button in VM details dialog
+2. `onRequestAction(action)` callback is invoked
+3. Parent component sets `pendingAction` state:
+   ```javascript
+   {
+     target: "vm",
+     id: vmId,
+     action: "start" | "stop" | "pause" | "resume" | "forceStop" | "reboot" | "reset"
+   }
+   ```
+4. `ConfirmDialog` component renders with:
+   - Title: "Confirm action"
+   - Message: "Do you want to [action] VM [id]?"
+5. User confirms or cancels
+6. On confirm, `runAction()` executes:
+   - Calls `runVmAction(vmId, action)`
+   - Sends request to `/api/vms/:id/:action`
+7. Success/error toast message displays
+8. Dialog remains open to show updated state
+9. Data refreshes on next interval
+
+## Supported VM Actions
+
+The backend supports these VM actions (defined in `VM_ACTIONS`):
+
+- `start` - Boot the VM
+- `stop` - Graceful shutdown via ACPI
+- `pause` - Suspend VM execution
+- `resume` - Resume from paused state
+- `forceStop` - Immediate termination
+- `reboot` - Graceful restart via ACPI
+- `reset` - Hard reset
+
+## Action Labels
+
+The `vmActionLabel()` function provides human-friendly labels:
+
+- "Start" for start
+- "Stop" for stop
+- "Pause" for pause
+- "Resume" for resume
+- "Force Stop" for forceStop
+- "Reboot" for reboot
+- "Reset" for reset
+
+## State-Based Actions
+
+The `vmActionsForState()` function determines available actions:
+
+### Running VM
+- stop
+- pause
+- reboot
+- forceStop (secondary)
+- reset (secondary)
+
+### Stopped VM
+- start
+
+### Paused VM
+- resume
+- stop
+
+### Other States
+- Minimal or no actions (transitional states)
+
+## Data Refresh
+
+VM data updates automatically:
+
+- Fetched from `/api/vms` via `fetchVms()`
+- Refresh interval matches app settings (default: 5 seconds)
+- Updates include:
+  - VM status changes
+  - State transitions
+  - Summary statistics
+
+## VM State Management
+
+The VMs tab uses several state variables:
+
+- `vmsData` - Full VM data including vms array and summary
+- `vmSearch` - Current search filter text
+- `filteredVms` - Computed VM list after search filtering
+- `vmInfoOpenId` - ID of VM with open details dialog
+- `selectedVm` - Full VM object for the open dialog
+
+## Dialog Accessibility
+
+The VM details dialog includes proper accessibility:
+
+- `role="dialog"` for screen reader context
+- `aria-modal="true"` indicates modal behavior
+- `aria-label="VM details"` provides context
+- Close button has `aria-label="Close VM details dialog"`
+- Backdrop click closes dialog
+- Proper focus management
+
+## Audit Logging
+
+All VM actions are logged on the backend:
+
+- Action type ("vm:start", "vm:stop", etc.)
+- Target VM ID
+- Result ("ok" or "failed")
+- Timestamp
+- Written via `writeAuditLog()`
+
+## Error Handling
+
+When VM actions fail:
+
+- Backend returns 500 status with error detail
+- Error message extracted via `toErrorDetail()`
+- Toast displays the error to user
+- Action logged as "failed"
+- VM state remains unchanged
+- User can retry the operation
+
+<Note>
+Advanced VM operations like editing configuration, attaching devices, or VNC console access must be performed through the Unraid web interface. The PWA focuses on essential control and monitoring.
+</Note>

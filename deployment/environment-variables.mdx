@@ -1,0 +1,205 @@
+---
+title: Environment Variables
+description: Configure Unraid PWA with environment variables
+---
+
+Unraid PWA can be configured using environment variables. The `.env` file is optional - defaults work out of the box.
+
+## Configuration File
+
+Create a `.env` file in the project root:
+
+```bash
+cp .env.example .env
+nano .env
+```
+
+## Available Environment Variables
+
+### UNRAID_BFF_PORT
+
+**Default:** `3001`
+
+The internal port the backend server listens on.
+
+```bash
+UNRAID_BFF_PORT=3001
+```
+
+<Note>
+  The `docker-compose.yml` maps this to host port `2442` by default. To change the external port, modify the port mapping in `docker-compose.yml`:
+  
+  ```yaml
+  ports:
+    - "2442:3001"  # Change 2442 to your desired port
+  ```
+</Note>
+
+### UNRAID_BFF_ORIGIN
+
+**Default:** `http://localhost:5173,http://localhost:2442`
+
+Comma-separated list of allowed origins for CORS on `/api` endpoints.
+
+```bash
+UNRAID_BFF_ORIGIN=http://localhost:5173,http://localhost:2442
+```
+
+**Usage:**
+- Same-origin requests to `http://<UNRAID-IP>:2442` don't require this setting
+- Required for cross-origin API requests from external applications
+- Use `*` to allow any origin (not recommended for production)
+
+**Examples:**
+
+```bash
+# Allow specific origins
+UNRAID_BFF_ORIGIN=https://myapp.example.com,https://admin.example.com
+
+# Allow any origin (development only)
+UNRAID_BFF_ORIGIN=*
+
+# Default for local development
+UNRAID_BFF_ORIGIN=http://localhost:5173,http://localhost:2442
+```
+
+### UNRAID_BFF_ENCRYPTION_KEY
+
+**Default:** (empty - auto-generated)
+
+Optional override for the encryption key used to encrypt server credentials.
+
+```bash
+UNRAID_BFF_ENCRYPTION_KEY=
+```
+
+**Behavior:**
+- If empty, the app auto-generates a key on first run
+- Generated key is persisted in `backend/data/encryption.key`
+- Manually setting this overrides the auto-generated key
+
+<Warning>
+  If you set a custom encryption key, store it securely. Loss of this key means you cannot decrypt saved server credentials.
+</Warning>
+
+**When to set manually:**
+- Migrating between servers
+- Restoring from backup
+- Sharing configuration across multiple instances
+
+### UNRAID_BFF_ALLOW_SELF_SIGNED
+
+**Default:** `true`
+
+Allow connections to Unraid servers with self-signed SSL certificates.
+
+```bash
+UNRAID_BFF_ALLOW_SELF_SIGNED=true
+```
+
+**Values:**
+- `true` - Accept self-signed certificates (recommended for Unraid)
+- `false` - Require valid SSL certificates
+
+<Note>
+  Most Unraid servers use self-signed certificates by default. Keep this set to `true` unless you've installed a valid SSL certificate on your Unraid server.
+</Note>
+
+### UNRAID_BFF_TRUST_PROXY
+
+**Default:** `false`
+
+Configure Express.js trust proxy setting for reverse proxy deployments.
+
+```bash
+UNRAID_BFF_TRUST_PROXY=false
+```
+
+**Values:**
+- `false` - Don't trust proxy headers (default)
+- `true` - Trust first hop proxy (sets Express trust proxy to `1`)
+- `loopback` - Trust loopback addresses only
+- `linklocal` - Trust link-local addresses
+- `uniquelocal` - Trust unique local addresses
+
+**When to enable:**
+- Running behind Nginx Proxy Manager
+- Running behind Traefik
+- Running behind any reverse proxy
+- Need to preserve client IP addresses
+- Need to respect `X-Forwarded-Host` headers
+
+**Example for reverse proxy:**
+
+```bash
+UNRAID_BFF_TRUST_PROXY=true
+```
+
+## Example .env File
+
+### Minimal Configuration
+
+For most users, the defaults work fine:
+
+```bash
+UNRAID_BFF_PORT=3001
+UNRAID_BFF_ORIGIN=http://localhost:5173,http://localhost:2442
+UNRAID_BFF_ENCRYPTION_KEY=
+UNRAID_BFF_ALLOW_SELF_SIGNED=true
+UNRAID_BFF_TRUST_PROXY=false
+```
+
+### Behind Reverse Proxy
+
+Configuration for running behind Nginx or Traefik:
+
+```bash
+UNRAID_BFF_PORT=3001
+UNRAID_BFF_ORIGIN=https://unraid.example.com
+UNRAID_BFF_ENCRYPTION_KEY=
+UNRAID_BFF_ALLOW_SELF_SIGNED=true
+UNRAID_BFF_TRUST_PROXY=true
+```
+
+### Custom External Port
+
+To use a different external port, modify `docker-compose.yml` instead:
+
+```yaml
+ports:
+  - "8080:3001"  # Access via port 8080
+```
+
+Then update your CORS origin:
+
+```bash
+UNRAID_BFF_ORIGIN=http://localhost:8080
+```
+
+## Applying Configuration Changes
+
+After modifying `.env`, restart the service:
+
+```bash
+cd /mnt/user/appdata/Unraid-PWA
+docker compose down
+docker compose up -d
+```
+
+## Environment Variables in Code
+
+Environment variables are loaded using `dotenv` and accessed in `backend/src/index.ts`:
+
+```typescript
+const port = Number(process.env.UNRAID_BFF_PORT ?? 3001);
+const allowedOrigins = (process.env.UNRAID_BFF_ORIGIN ?? "*")
+  .split(",")
+  .map((item) => item.trim())
+  .filter(Boolean);
+```
+
+## Next Steps
+
+- [Docker Compose deployment](/deployment/docker-compose)
+- [Data persistence](/deployment/data-persistence)
+- [Update procedures](/deployment/updating)
