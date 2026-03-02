@@ -1,0 +1,107 @@
+{
+  "projectType": "saas",
+  "projectName": "Unraid PWA",
+  "projectDescription": "Self-hostable, mobile-first web app to monitor and control Unraid servers via GraphQL API.",
+  "theme": "aspen",
+  "primaryColor": "#FF7A00",
+  "lightColor": "#2B6BFF",
+  "darkColor": "#0E1B4A",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "installation",
+              "quickstart",
+              "configuration"
+            ]
+          },
+          {
+            "group": "Features",
+            "pages": [
+              "features/dashboard",
+              "features/server-management",
+              "features/array-control",
+              "features/docker-containers",
+              "features/virtual-machines",
+              "features/shares-storage",
+              "features/notifications"
+            ]
+          },
+          {
+            "group": "Deployment",
+            "pages": [
+              "deployment/docker-compose",
+              "deployment/building-from-source",
+              "deployment/environment-variables",
+              "deployment/data-persistence",
+              "deployment/updating"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "api/overview",
+              "api/authentication"
+            ]
+          },
+          {
+            "group": "Endpoints",
+            "pages": [
+              "api/servers",
+              "api/overview-data",
+              "api/array",
+              "api/docker",
+              "api/vms",
+              "api/shares",
+              "api/notifications",
+              "api/settings"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Multi-server management with encrypted credential storage",
+    "Real-time monitoring of system status, array, and resources",
+    "Docker container management (start, stop, restart)",
+    "Virtual machine control with multiple actions",
+    "Storage shares and disk array monitoring",
+    "Notification management and archiving",
+    "Progressive Web App with offline support",
+    "Mobile-first responsive design",
+    "CSRF protection and audit logging",
+    "Self-signed certificate support for Unraid"
+  ],
+  "publicApiSurface": [
+    "POST /api/servers/test",
+    "POST /api/servers",
+    "GET /api/servers",
+    "PUT /api/servers/:id",
+    "POST /api/servers/:id/activate",
+    "DELETE /api/servers/:id",
+    "GET /api/servers/status",
+    "GET /api/overview",
+    "GET /api/array",
+    "POST /api/array/:action",
+    "GET /api/docker",
+    "GET /api/docker/:id/icon",
+    "POST /api/docker/:id/:action",
+    "GET /api/vms",
+    "POST /api/vms/:id/:action",
+    "GET /api/shares",
+    "POST /api/notifications/:id/archive",
+    "GET /api/settings/app",
+    "PUT /api/settings/app"
+  ]
+}
